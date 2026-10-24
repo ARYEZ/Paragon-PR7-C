@@ -14,14 +14,14 @@ Unlike PR7-B and PR7-V, it is **not** a copy of PR7-G. It was seeded lean: PR7-G
 
 - **The plugin:** true stereo (stereo in/out, or mono in/out on a mono track).
   - Its own identity: `Paragon PR7-C`, plugin code `Pr7c`, bundle `com.paragon.paragonpr7c`, maker code `Prgn`.
-  - Parameters: `inputGain`, `outputTrim`, `outputLevel` (the fader), `phaseInvert`, `mute`; the HPF / LPF (`hpfOn`, `hpfFreq`, `lpfOn`, `lpfFreq`, `filterPlacement`); the EQ (`<band>On/Freq/Gain` plus `<band>Q` or `<band>Shelf`, bands from `ParamRanges::eqBands`); the compressor (`comp*`) and `dynamicsLink`. Input and output peak meters (console-calibrated, with OVL), and gain-reduction sources (`getGainReduction`) for the GR meters, which stay at 0 until the dynamics exist.
+  - Parameters: `inputGain`, `outputTrim`, `outputLevel` (the fader), `phaseInvert`, `mute`; the HPF / LPF (`hpfOn`, `hpfFreq`, `lpfOn`, `lpfFreq`, `filterPlacement`); the EQ (`<band>On/Freq/Gain` plus `<band>Q` or `<band>Shelf`, bands from `ParamRanges::eqBands`); the compressor (`comp*`), the limiter (`limit*`) and `dynamicsLink`. Input and output peak meters (console-calibrated, with OVL), and gain-reduction sources (`getGainReduction`) for the GR meters, which stay at 0 until the dynamics exist.
 - **`source/ui/MainView`:** a fixed **1448 × 1086** canvas, exactly the concept image's size, so coordinates can be read straight off `docs/concept.png`. The editor scales it to the window.
   - **Step 1 is done:** every module's panel is drawn with all its controls, placed as on the concept. `MainView::modules()` holds each module's rectangle.
   - Controls are registered by ID (`"comp.ratio"`, `"hf.on"`...; see `MainView.cpp`). Controls of unbuilt modules are **inert** (tooltips say which step brings them). Each step creates the parameters and brings its controls to life with `attachKnob` (prints the scale at the true values and turns on the value popup), `attachButton` and `attachSwitch`.
-- **`source/dsp/`:** `Biquad` (cookbook filters), `ChannelEq` (`EqBand`, `CutFilters`), `Compressor`.
+- **`source/dsp/`:** `Biquad` (cookbook filters), `ChannelEq` (`EqBand`, `CutFilters`), `Compressor`, `Limiter`.
   - Modules jump straight to their settings on the first block after `prepare`/`reset` (`fresh`), and glide or fade only for changes made while playing.
   - The processor runs the modules in stretches no longer than the prepared block size (`processModules`), as their working buffers are that size. The dynamics' detector hears `sidechain`: the audio at that point, through the HPF / LPF when they're on SC.
-- **`PARAGON_SNAPSHOT_DEMO=1`** switches modules on for a render that shows them working (the compressor so far).
+- **`PARAGON_SNAPSHOT_DEMO=1`** switches modules on for a render that shows them working (the compressor and limiter so far).
   - `source/ui/Controls`: `Knob` (draws itself; its slider only takes the mouse over the knob), `Led`, `LeverSwitch`, `RoundButton`, `GainReductionMeter`. Buttons are `TextButton`s with `ParagonLookAndFeel::consoleButtonProperty`.
 - **Carried over from PR7-G:**
   - `ParagonLookAndFeel` (Inter fonts, knobs, LED/neon bars, piano keys, chrome bezels).
@@ -68,12 +68,9 @@ The behaviour notes below are **modelled on** a classic 1970s/80s British consol
    - **HMF** 400 Hz–5 kHz and **MF** 150 Hz–2.5 kHz: bells with **Q** 0.5–4 (the small knob turns 9 to 3 o'clock). The concept's curve keys on these two were removed: they'd have done nothing.
    - Bells use **proportional Q** (our design): Q × 2^((|gain| − 6) / 18), so the knob reads true at ±6 dB, broader for small moves, narrower for big ones. Shelves are the cookbook's slope-1 shelves (no overshoot), the frequency at half the gain.
    - Changes glide (30 ms; coefficients every 32 samples); shelf↔bell fades the band out and in; a band at 0 dB stops running once its filter has rung out, so defaults are bit-exact.
-6. **LIMIT.**
-   - **THRESHOLD** and **MAKE UP**.
-   - **BRICK / SOFT / AUTO** modes: brick-wall, soft-knee, and programme-dependent release.
-   - **MIX** (0–100%).
-   - **LINK** gives stereo-linked gain reduction: the same reduction on both channels, from the louder one.
-   - A peak (not RMS) detector. Report latency if it looks ahead.
+6. **LIMIT. (Built, step 4; our design.)** Off by default. A peak limiter with **no look-ahead (zero latency)**: an instant-attack peak envelope, so the ceiling always holds, at the price of squaring off the first instant of a hard-limited peak. THRESHOLD −20 to 0 dBFS (default −1); MAKE UP 0–12 dB (the ceiling rises with it); MIX 0–100% (below 100% some original peaks come back); LINK shared with COMP.
+   - **BRICK:** gain = ceiling / envelope, 100 ms release. **SOFT:** a 6 dB knee centred on the threshold (it flattens exactly at the threshold, so it holds the ceiling too), 150 ms release. An attack time was tried and dropped: without look-ahead it lets every hit through. **AUTO:** BRICK's ceiling, release 30 ms after a short peak stretching to about 400 ms under steady limiting.
+   - If the owner wants cleaner hard limiting, add look-ahead as a constant latency (reported with `setLatencySamples`), on or off.
 7. **SATURATION.**
    - **DRIVE** (0–100%).
    - **VCA CLIP:** a soft-to-hard clipper, like overdriving the console's VCA.

@@ -202,9 +202,9 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
     addLed ("limit.on", { 375, 538 }, later ("Limiter on/off", limitStep));
     addKnob ("limit.threshold", P (414, 614), 35, { "-20", "-15", "-10", "-5", "0" }, {}, "THRESHOLD", 1.0, later ("Limiter threshold", limitStep));
     addKnob ("limit.makeup", P (551, 614), 35, { "0", "3", "6", "9", "12" }, {}, "MAKE UP", 0.0, later ("Make-up gain", limitStep));
-    addButton ("limit.brick", "BRICK", R (365, 690, 78, 32), true, later ("BRICK: a brick-wall limit", limitStep));
-    addButton ("limit.soft", "SOFT", R (446, 690, 78, 32), true, later ("SOFT: a soft knee", limitStep));
-    addButton ("limit.auto", "AUTO", R (527, 690, 78, 32), true, later ("AUTO: programme-dependent release", limitStep));
+    addButton ("limit.brick", "BRICK", R (365, 690, 78, 32), true, "BRICK: a hard ceiling. Nothing gets past the threshold.");
+    addButton ("limit.soft", "SOFT", R (446, 690, 78, 32), true, "SOFT: eases in from 3 dB below the threshold and lets go more gently. Still a ceiling: nothing gets past it.");
+    addButton ("limit.auto", "AUTO", R (527, 690, 78, 32), true, "AUTO: BRICK's ceiling, letting go quickly after short peaks and slowly under steady limiting");
     addRadioGroup ({ "limit.brick", "limit.soft", "limit.auto" }, 3, "limit.brick");
     addKnob ("limit.mix", P (426, 775), 27, { "0", "50", "100" }, {}, "MIX %", 1.0, later ("Mix: how much of the limited signal you hear", limitStep));
     addButton ("dynamics.link", "LINK", R (527, 760, 76, 34), true,
@@ -405,6 +405,17 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
                 "Make up (dB): brings the level back up after compressing");
     attachButton ("dynamics.link", ParamIDs::dynamicsLink,
                   "LINK: the gate, compressor and limiter turn both channels down together, from the louder one, so the stereo image stays put");
+
+    // LIMIT (step 4).
+    attachButton ("limit.on", ParamIDs::limitOn, "Limiter on/off. A peak limiter with no look-ahead, so it adds no delay.");
+    attachKnob ("limit.threshold", ParamIDs::limitThreshold,
+                { { -20.0f, "-20" }, { -15.0f, "-15" }, { -10.0f, "-10" }, { -5.0f, "-5" }, { 0.0f, "0" } },
+                "Threshold (dBFS): the ceiling. Nothing gets past it.");
+    attachKnob ("limit.makeup", ParamIDs::limitMakeUp, { { 0.0f, "0" }, { 3.0f, "3" }, { 6.0f, "6" }, { 9.0f, "9" }, { 12.0f, "12" } },
+                "Make up (dB): gain after limiting. The ceiling rises with it.");
+    attachChoice ({ "limit.brick", "limit.soft", "limit.auto" }, ParamIDs::limitMode);
+    attachKnob ("limit.mix", ParamIDs::limitMix, { { 0.0f, "0" }, { 50.0f, "50" }, { 100.0f, "100" } },
+                "Mix: the limited sound blended with the dry. Below 100%, some of the original peaks come back through.");
 
     // The header.
     addButton ("preset.previous", {}, R (522, 24, 32, 32), false, later ("The previous preset", presetStep))

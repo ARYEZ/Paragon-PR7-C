@@ -10,6 +10,7 @@ namespace Parameters
         constexpr int panelVersion = 2;   // the OUTPUT column of the full panel layout
         constexpr int eqVersion = 3;      // the EQ and the HPF / LPF
         constexpr int compVersion = 4;    // the compressor and LINK
+        constexpr int limitVersion = 5;   // the limiter
 
         // RATIO: the marks evenly round the knob, log-even between them. The
         // bottom stretch (below 1.25) is the SOFT position.
@@ -233,6 +234,24 @@ namespace Parameters
         layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { ParamIDs::compCharacter, compVersion }, "Comp Character",
                                                                   compCharacters, 0));
         compBool (ParamIDs::dynamicsLink, "Link", true);
+
+        // LIMIT.
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { ParamIDs::limitOn, limitVersion }, "Limiter", false,
+                                                                juce::AudioParameterBoolAttributes().withStringFromValueFunction (onOff)));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { ParamIDs::limitThreshold, limitVersion }, "Limit Threshold",
+            juce::NormalisableRange<float> (limitThresholdMin, 0.0f, 0.1f), -1.0f,
+            juce::AudioParameterFloatAttributes().withLabel ("dB").withStringFromValueFunction (asDb)));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { ParamIDs::limitMakeUp, limitVersion }, "Limit Make Up",
+            juce::NormalisableRange<float> (0.0f, limitMakeUpMax, 0.1f), 0.0f,
+            juce::AudioParameterFloatAttributes().withLabel ("dB").withStringFromValueFunction (asDb)));
+        layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { ParamIDs::limitMode, limitVersion }, "Limit Mode",
+                                                                  limitModes, 0));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { ParamIDs::limitMix, limitVersion }, "Limit Mix",
+            juce::NormalisableRange<float> (0.0f, 100.0f, 1.0f), 100.0f,
+            juce::AudioParameterFloatAttributes().withLabel ("%").withStringFromValueFunction ([] (float v, int) { return juce::String (juce::roundToInt (v)) + "%"; })));
         return layout;
     }
 }

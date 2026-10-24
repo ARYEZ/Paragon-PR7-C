@@ -38,6 +38,13 @@ namespace ParamIDs
     inline constexpr auto compMakeUp = "compMakeUp";         // dB
     inline constexpr auto compCharacter = "compCharacter";   // choice: VCA, OPTO, FET
 
+    // LIMIT.
+    inline constexpr auto limitOn = "limitOn";
+    inline constexpr auto limitThreshold = "limitThreshold";   // dBFS
+    inline constexpr auto limitMakeUp = "limitMakeUp";         // dB
+    inline constexpr auto limitMode = "limitMode";             // choice: Brick, Soft, Auto
+    inline constexpr auto limitMix = "limitMix";               // %
+
     // LINK, on the LIMIT panel: links the gate, compressor and limiter.
     inline constexpr auto dynamicsLink = "dynamicsLink";
 }
@@ -75,6 +82,9 @@ namespace ParamRanges
     inline constexpr float compReleaseMin = 50.0f, compReleaseMax = 3000.0f;     // ms
     inline constexpr float compMakeUpMax = 20.0f;
     inline const juce::StringArray compCharacters { "VCA", "OPTO", "FET" };    // saved by index: only append
+
+    inline constexpr float limitThresholdMin = -20.0f, limitMakeUpMax = 12.0f;
+    inline const juce::StringArray limitModes { "Brick", "Soft", "Auto" };   // saved by index: only append
 
     // RATIO's printed marks, evenly spaced round the knob: SOFT (1), then
     // 1.5:1 to infinite (30). The travel between marks is even in log ratio.

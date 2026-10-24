@@ -11,6 +11,12 @@ Each version's notes appear on its GitHub Release page.
   - **LINK** (on by default) turns both sides down together, so the stereo image stays put.
   - With the HPF / LPF switch on **SC**, the compressor listens through the filters, so a big kick drum doesn't make the whole mix duck. The audio itself isn't filtered.
   - The **COMP** meters in the meter window show how much it's turning down. The meter under COMP shows the reduction on the left and the make-up gain on the right.
+- **The limiter works:**
+  - THRESHOLD is a ceiling that nothing gets past (−20 to 0 dBFS). MAKE UP raises the level, and the ceiling with it.
+  - MIX blends in the dry sound. Below 100%, some of the original peaks come back through.
+  - Three modes: **BRICK**, a hard ceiling; **SOFT**, which eases in from 3 dB below the threshold and lets go gently; and **AUTO**, which lets go quickly after short peaks and slowly under steady limiting.
+  - It has no look-ahead, so it adds **no delay** to the track. The trade-off: when it's limiting hard, the very start of each peak is squared off slightly, as on a hardware limiter.
+  - **LINK** now works for the limiter too. The **LIMIT** meters show how much it's turning down.
 - **Fixed:** at the start of playback, the filters and EQ faded in over a few milliseconds instead of starting at their settings.
 
 ## 0.2.0

@@ -6,10 +6,11 @@
 #include "Parameters.h"
 #include "dsp/ChannelEq.h"
 #include "dsp/Compressor.h"
+#include "dsp/Limiter.h"
 
 // The channel strip. True stereo (stereo in, stereo out), or mono in, mono
 // out on a mono track. So far: INPUT, the HPF / LPF, the compressor, the
-// five-band EQ, the OUTPUT column (Ø, MUTE, OUTPUT TRIM and the fader) and
+// five-band EQ, the limiter, the OUTPUT column (Ø, MUTE, OUTPUT TRIM and the fader) and
 // the meters. The other modules are built one at a time (see CLAUDE.md).
 class ParagonPR7CAudioProcessor final : public juce::AudioProcessor
 {
@@ -91,6 +92,10 @@ private:
     CompParameters compParameters {};
     effects::Compressor compressor;
     GainReductionSource compGainChange;
+
+    struct LimitParameters { std::atomic<float>* on, * threshold, * makeUp, * mode, * mix; };
+    LimitParameters limitParameters {};
+    effects::Limiter limiter;
     std::atomic<float> compMakeUpShown { 0.0f };
     effects::CutFilters filtersSidechain;
     juce::AudioBuffer<float> sidechain;

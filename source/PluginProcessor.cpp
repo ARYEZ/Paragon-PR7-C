@@ -27,6 +27,8 @@ ParagonPR7CAudioProcessor::ParagonPR7CAudioProcessor()
     compParameters = { raw (ParamIDs::compOn), raw (ParamIDs::compThreshold), raw (ParamIDs::compRatio), raw (ParamIDs::compAttack),
                        raw (ParamIDs::compRelease), raw (ParamIDs::compAuto), raw (ParamIDs::compMakeUp), raw (ParamIDs::compCharacter),
                        raw (ParamIDs::dynamicsLink) };
+    limitParameters = { raw (ParamIDs::limitOn), raw (ParamIDs::limitThreshold), raw (ParamIDs::limitMakeUp), raw (ParamIDs::limitMode),
+                        raw (ParamIDs::limitMix) };
 }
 
 bool ParagonPR7CAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -43,6 +45,7 @@ void ParagonPR7CAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     maxBlockSize = juce::jmax (1, samplesPerBlock);
     sidechain.setSize (2, maxBlockSize);
     compressor.prepare (sampleRate, maxBlockSize);
+    limiter.prepare (sampleRate, maxBlockSize);
     filtersSidechain.prepare (sampleRate);
     for (auto* gain : { &inputGain, &outputGain })
         gain->reset (sampleRate, 0.02);
@@ -153,7 +156,15 @@ void ParagonPR7CAudioProcessor::processModules (juce::AudioBuffer<float>& buffer
 
     filtersPost.process (buffer, numSamples, filterSettings (filtersAfterDynamics));
 
-    // LIMIT, SATURATION, the console colour and the stereo tools will go here.
+    const auto& l = limitParameters;
+    limiter.process (buffer, numSamples,
+                     { l.on->load() >= 0.5f, l.threshold->load(), l.makeUp->load(),
+                       (effects::Limiter::Mode) juce::jlimit (0, 2, juce::roundToInt (l.mode->load())),
+                       l.mix->load() / 100.0f, compParameters.link->load() >= 0.5f });
+    for (int channel = 0; channel < 2; ++channel)
+        getGainReduction (Dynamics::limit, channel).push (limiter.getReductionDb (channel));
+
+    // SATURATION, the console colour and the stereo tools will go here.
 }
 
 void ParagonPR7CAudioProcessor::pushMeters (std::array<LevelMeterSource, 2>& meters, const juce::AudioBuffer<float>& buffer, int numSamples) noexcept

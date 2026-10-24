@@ -20,11 +20,12 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
     processor.prepareToPlay (48000.0, 256);
 
     // PARAGON_SNAPSHOT_DEMO=1: some modules switched on and set, to show
-    // them working (the compressor squeezing, with make-up).
+    // them working (the compressor squeezing, with make-up, then the limiter).
     if (juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_DEMO", {}) == "1")
     {
         for (const auto& [id, value] : { std::pair (ParamIDs::compOn, 1.0f), { ParamIDs::compThreshold, -32.0f }, { ParamIDs::compMakeUp, 6.0f },
-                                         { ParamIDs::compAuto, 1.0f } })
+                                         { ParamIDs::compAuto, 1.0f }, { ParamIDs::limitOn, 1.0f }, { ParamIDs::limitThreshold, -24.0f },
+                                         { ParamIDs::limitMakeUp, 4.0f } })
         {
             auto* parameter = processor.getParameters().getParameter (id);
             parameter->setValueNotifyingHost (parameter->convertTo0to1 (value));
