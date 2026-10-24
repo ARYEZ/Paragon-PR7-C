@@ -24,6 +24,9 @@ ParagonLookAndFeel::ParagonLookAndFeel()
     setColour (juce::TooltipWindow::backgroundColourId, ParagonColours::panel);
     setColour (juce::TooltipWindow::textColourId, ParagonColours::text);
     setColour (juce::TooltipWindow::outlineColourId, ParagonColours::panelEdge);
+    // The value shown while a knob or the fader is turned.
+    setColour (juce::BubbleComponent::backgroundColourId, ParagonColours::panel.withAlpha (0.95f));
+    setColour (juce::BubbleComponent::outlineColourId, ParagonColours::accent);
 }
 
 void ParagonLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButton& button, bool highlighted, bool)

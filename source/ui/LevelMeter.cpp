@@ -40,12 +40,15 @@ float LevelMeter::dbForProportion (float proportion) noexcept
 void LevelMeter::resetPeakHold()
 {
     heldDb = minDb;
+    overloaded = false;
     repaint();
 }
 
 void LevelMeter::timerCallback()
 {
-    const auto peakDb = juce::Decibels::gainToDecibels (source.takePeak(), minDb);
+    const auto peak = source.takePeak();
+    overloaded = overloaded || peak > 1.0f;
+    const auto peakDb = juce::jmax (minDb, juce::Decibels::gainToDecibels (peak, -200.0f) - dbfsAtZero);
     const auto fallenDb = displayedDb - fallDbPerSecond / (float) refreshHz;
     const auto newDb = juce::jmax (peakDb, fallenDb, minDb);
     const auto newHeld = juce::jmax (heldDb, peakDb);
@@ -72,9 +75,9 @@ void LevelMeter::paint (juce::Graphics& g)
     {
         const auto proportion = ((float) i + 0.5f) / (float) count;
         const auto db = dbForProportion (proportion);
-        const auto colour = db > 0.0f ? ParagonColours::meterRed
-                          : db > -18.0f ? juce::Colour (0xffffa62a)
-                                        : juce::Colour (0xfff3ede4);
+        const auto colour = db > -dbfsAtZero ? ParagonColours::meterRed
+                          : db > 0.0f ? juce::Colour (0xffffa62a)
+                                      : juce::Colour (0xfff3ede4);
         const auto lit = proportion <= litProportion || i == heldSegment;
         const auto segment = juce::Rectangle<float> (bounds.getX(), bounds.getBottom() - (float) (i + 1) * pitch + 0.6f, bounds.getWidth(), pitch - 1.2f);
 

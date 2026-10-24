@@ -30,6 +30,7 @@ Knob::Knob (std::vector<juce::String> scale, juce::String unitText, juce::String
     slider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
     slider.getProperties().set (ParagonLookAndFeel::invisibleSliderProperty, true);   // the knob draws itself
     slider.onValueChange = [this] { repaint(); };
+    slider.setVelocityModeParameters (0.25, 1, 0.0, true, juce::ModifierKeys::shiftModifier);   // Shift-drag: fine control
     addAndMakeVisible (slider);
     setInterceptsMouseClicks (false, true);   // only the knob itself takes the mouse, not its printed scale
 }

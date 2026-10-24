@@ -5,10 +5,12 @@
 #include "LevelMeterSource.h"
 
 // One channel's peak meter in the meter window: a column of fine LED
-// segments, +24 dB at the top and -60 dB at the bottom, where 0 is digital
-// full scale (0 dBFS, as on the DAW's own meters). Lit segments are warm
-// white below -18 dB, amber up to 0, and red above it (overs). The highest
-// peak stays lit as a single segment until resetPeakHold().
+// segments, +24 at the top and -60 at the bottom, read like a console's
+// meter: 0 is the console's nominal level, 20 dB below digital full scale
+// (0 = -20 dBFS), so +20 is full scale. Lit segments are warm white up to 0,
+// amber above it (hot, where the console starts to colour), and red past
+// +20 (clipping). The highest peak stays lit as a single segment, and an
+// overload is remembered, until resetPeakHold().
 class LevelMeter final : public juce::Component,
                          private juce::Timer
 {
@@ -20,6 +22,7 @@ public:
 
     static constexpr float minDb = -60.0f;
     static constexpr float maxDb = 24.0f;
+    static constexpr float dbfsAtZero = -20.0f;   // the console calibration: 0 on the scale is -20 dBFS
 
     // The printed scale, top to bottom. The marks are evenly spaced, as on
     // the concept, so the 12 dB steps at the bottom are squeezed into the
@@ -31,10 +34,13 @@ public:
 
     float getDisplayedDb() const noexcept { return displayedDb; }
     float getPeakHoldDb() const noexcept { return heldDb; }
+    // True once a peak has gone over digital full scale (0 dBFS), until reset.
+    bool hasOverloaded() const noexcept { return overloaded; }
 
 private:
     void timerCallback() override;
 
     LevelMeterSource& source;
     float displayedDb = minDb, heldDb = minDb;
+    bool overloaded = false;
 };

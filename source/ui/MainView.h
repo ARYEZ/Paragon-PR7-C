@@ -16,7 +16,8 @@
 // their IDs here. Working now: INPUT, Ø, MUTE, OUTPUT TRIM, the fader, the
 // meters, and the finish (from the settings gear).
 class MainView final : public juce::Component,
-                       private juce::ChangeListener
+                       private juce::ChangeListener,
+                       private juce::Timer
 {
 public:
     explicit MainView (ParagonPR7CAudioProcessor&);
@@ -43,9 +44,13 @@ public:
     // The meter window's four level meters (IN L, IN R, OUT L, OUT R).
     std::array<LevelMeter*, 4> getLevelMeters() noexcept { return { &inputLeft, &inputRight, &outputLeft, &outputRight }; }
     juce::Button& getPeakHoldReset() noexcept { return peakReset; }
+    // OVL: lights once any meter has gone past digital full scale, until reset.
+    Led& getOverloadLamp() noexcept { return overload; }
 
 private:
     void changeListenerCallback (juce::ChangeBroadcaster*) override;   // the finish changed
+    void timerCallback() override;                                      // follows the meters for OVL
+    void resetPeakHolds();
 
     Knob& addKnob (const juce::String& id, juce::Point<float> centre, float ringRadius, std::vector<juce::String> scale,
                    juce::String unit, juce::String caption, double initial, const juce::String& tooltip);
@@ -64,6 +69,7 @@ private:
 
     LevelMeter inputLeft, inputRight, outputLeft, outputRight;
     RoundButton peakReset;
+    Led overload;
     juce::OwnedArray<GainReductionMeter> reductionMeters;
     juce::Slider fader { juce::Slider::LinearVertical, juce::Slider::NoTextBox };
 

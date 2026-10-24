@@ -18,7 +18,7 @@ namespace ParamRanges
 {
     inline constexpr float inputGainMin = -24.0f, inputGainMax = 12.0f;
     inline constexpr float outputTrimMin = -12.0f, outputTrimMax = 12.0f;
-    inline constexpr float outputLevelMin = -60.0f, outputLevelMax = 10.0f;
+    inline constexpr float outputLevelMin = -60.0f, outputLevelMax = 10.0f;   // the very bottom is silence (-inf)
 
     // The output fader's printed scale, top to bottom. The marks are evenly
     // spaced on the fader (as on the concept), so the travel between two

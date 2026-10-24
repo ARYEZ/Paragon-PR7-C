@@ -16,9 +16,6 @@ namespace
     // The output fader's scale: +10 dB at the top, -60 at the bottom.
     constexpr float faderTop = 731.0f, faderBottom = 954.0f, faderX = 1332.0f;
 
-    // The blank plate under LMF, which holds no module.
-    const juce::Rectangle<float> blankPlate { 645.0f, 884.0f, 286.0f, 112.0f };
-
     // Modules whose plates have no lamp and title along the top.
     bool hasHeader (const juce::String& name) { return name != "STEREO MODE" && name != "OUTPUT TRIM"; }
 
@@ -69,8 +66,10 @@ namespace
         plate.addRoundedRectangle (bounds, 8.0f);
         juce::DropShadow (juce::Colours::black.withAlpha (0.8f), 10, { 0, 3 }).drawForPath (g, plate);
 
-        g.setGradientFill (juce::ColourGradient (Finish::pick (0xfff6f3f4, 0xff343033), 0.0f, bounds.getY(),
-                                                 Finish::pick (0xffd6d0d3, 0xff191618), 0.0f, bounds.getBottom(), false));
+        // Pearl black is near black, as on the PR7-G black unit (its face
+        // measures #0d0d0d to #131010), lit only along its top edge.
+        g.setGradientFill (juce::ColourGradient (Finish::pick (0xfff6f3f4, 0xff161314), 0.0f, bounds.getY(),
+                                                 Finish::pick (0xffd6d0d3, 0xff0b0a0b), 0.0f, bounds.getBottom(), false));
         g.fillPath (plate);
 
         // The bevel: the top edge catching the light, the bottom in shadow.
@@ -126,10 +125,13 @@ const std::vector<MainView::Module>& MainView::modules()
         { "COMP",             { 334.0f, 80.0f, 302.0f, 432.0f } },
         { "LIMIT",            { 334.0f, 518.0f, 302.0f, 310.0f } },
         { "SATURATION",       { 334.0f, 834.0f, 302.0f, 162.0f } },
-        { "HF",               { 645.0f, 80.0f, 286.0f, 194.0f } },
-        { "HMF",              { 645.0f, 279.0f, 286.0f, 214.0f } },
-        { "MF",               { 645.0f, 498.0f, 286.0f, 191.0f } },
-        { "LMF",              { 645.0f, 694.0f, 286.0f, 185.0f } },
+        // Five EQ bands: the concept's four, re-spaced to fit LF on its
+        // blank plate. The bands with a Q knob need more height.
+        { "HF",               { 645.0f, 80.0f, 286.0f, 170.0f } },
+        { "HMF",              { 645.0f, 255.0f, 286.0f, 191.0f } },
+        { "MF",               { 645.0f, 451.0f, 286.0f, 191.0f } },
+        { "LMF",              { 645.0f, 647.0f, 286.0f, 170.0f } },
+        { "LF",               { 645.0f, 822.0f, 286.0f, 174.0f } },
         { "FILTERS / TONE",   { 938.0f, 80.0f, 288.0f, 790.0f } },
         { "MONO MAKER / STEREO WIDTH", { 938.0f, 876.0f, 288.0f, 120.0f } },
         { "IN / OUT",         { 1235.0f, 80.0f, 190.0f, 304.0f } },
@@ -163,11 +165,11 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
     addKnob ("gate.range", P (243, 400), 37, { "0", "10", "20", "30", "40" }, {}, "RANGE", 0.0, later ("Range: the most the gate turns down. 0 is off", gateStep));
     addButton ("gate.minus30", "-30", R (70, 466, 85, 36), true, later ("-30: shifts the threshold range down 30 dB, for quiet material", gateStep));
     addButton ("gate.exp", "EXP", R (171, 466, 84, 36), true, later ("EXP: an expander instead of a gate", gateStep));
-    addKnob ("gate.attack", P (94, 570), 31, { "0.03", "1", "10" }, {}, "ATTACK", 0.5, later ("Gate attack", gateStep));
+    addKnob ("gate.hold", P (94, 570), 31, { "0", "50", "500" }, {}, "HOLD", 0.3, later ("Hold: how long (ms) the gate stays open before it starts to close", gateStep));
     addKnob ("gate.release", P (199, 570), 31, { "0.5", "1", "2" }, {}, "RELEASE", 0.5, later ("Gate release", gateStep));
-    addButton ("gate.fast", "FAST", R (250, 518, 60, 31), true, later ("FAST hold and release", gateStep));
-    addButton ("gate.med", "MED", R (250, 554, 60, 31), true, later ("MED hold and release", gateStep));
-    addButton ("gate.slow", "SLOW", R (250, 590, 60, 31), true, later ("SLOW hold and release", gateStep));
+    addButton ("gate.fast", "FAST", R (250, 518, 60, 31), true, later ("Gate attack: FAST, for drums", gateStep));
+    addButton ("gate.med", "MED", R (250, 554, 60, 31), true, later ("Gate attack: MED", gateStep));
+    addButton ("gate.slow", "SLOW", R (250, 590, 60, 31), true, later ("Gate attack: SLOW, for smooth fades", gateStep));
     addRadioGroup ({ "gate.fast", "gate.med", "gate.slow" }, 1, "gate.med");
     addKnob ("gate.ratio", P (116, 690), 35, { "1:1", "1.5:1", "3:1", "6:1", "20:1" }, {}, "RATIO", 0.5, later ("Expander ratio", gateStep));
     addSwitch ("gate.linear", R (251, 658, 21, 50), 2, 1, true, later ("LINEAR: a linear release instead of the usual exponential one", gateStep));
@@ -184,14 +186,17 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
     // COMP.
     addLed ("comp.on", { 373, 104 }, later ("Compressor on/off", compStep));
     addKnob ("comp.threshold", P (409, 185), 37, { "-40", "-30", "-20", "-10", "0" }, {}, "THRESHOLD", 1.0, later ("Compressor threshold", compStep));
-    addKnob ("comp.ratio", P (556, 185), 37, { "1.5", "2", "4", "8", "12", "20" }, {}, "RATIO", 0.4, later ("Compressor ratio", compStep));
+    auto& ratio = addKnob ("comp.ratio", P (556, 185), 37, {}, {}, "RATIO", 0.4,
+                           later ("Compressor ratio. At SOFT, the ratio rises gently with the level: light on quiet parts, firmer on peaks", compStep));
+    ratio.setScale ({ { 0.0f, "SOFT" }, { 0.2f, "1.5" }, { 0.4f, "2" }, { 0.6f, "4" }, { 0.8f, "10" }, { 1.0f, juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x9e")) } });
     addButton ("comp.vca", "VCA", R (368, 268, 78, 30), true, later ("VCA: clean, precise, hard knee", compStep));
     addButton ("comp.opto", "OPTO", R (448, 268, 78, 30), true, later ("OPTO: slow, programme-dependent, smooth release", compStep));
     addButton ("comp.fet", "FET", R (528, 268, 78, 30), true, later ("FET: fast and aggressive, adds harmonics", compStep));
     addRadioGroup ({ "comp.vca", "comp.opto", "comp.fet" }, 2, "comp.vca");
-    addKnob ("comp.attack", P (409, 375), 34, { "0.1", "1", "10", "30" }, {}, "ATTACK", 0.5, later ("Compressor attack", compStep));
-    addKnob ("comp.release", P (560, 375), 34, { "0.1", "0.3", "1", "3" }, {}, "RELEASE", 0.5, later ("Compressor release", compStep));
-    addLed ("comp.auto", { 616, 393 }, later ("AUTO: programme-dependent release", compStep)).setToggleState (false, juce::dontSendNotification);
+    addKnob ("comp.attack", P (395, 372), 26, { "0.1", "1", "30" }, {}, "ATTACK", 0.5, later ("Compressor attack (ms)", compStep));
+    addKnob ("comp.release", P (485, 372), 26, { "0.1", "1", "3" }, {}, "RELEASE", 0.5, later ("Compressor release (s)", compStep));
+    addLed ("comp.auto", { 530, 333 }, later ("AUTO: programme-dependent release", compStep)).setToggleState (false, juce::dontSendNotification);
+    addKnob ("comp.makeup", P (575, 372), 26, { "0", "10", "20" }, {}, "MAKE UP", 0.0, later ("Make-up gain (dB): brings the level back up after compressing", compStep));
 
     // LIMIT.
     addLed ("limit.on", { 375, 538 }, later ("Limiter on/off", limitStep));
@@ -202,7 +207,8 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
     addButton ("limit.auto", "AUTO", R (527, 690, 78, 32), true, later ("AUTO: programme-dependent release", limitStep));
     addRadioGroup ({ "limit.brick", "limit.soft", "limit.auto" }, 3, "limit.brick");
     addKnob ("limit.mix", P (426, 775), 27, { "0", "50", "100" }, {}, "MIX %", 1.0, later ("Mix: how much of the limited signal you hear", limitStep));
-    addButton ("limit.link", "LINK", R (527, 760, 76, 34), true, later ("LINK: the same gain reduction on both channels", limitStep))
+    addButton ("dynamics.link", "LINK", R (527, 760, 76, 34), true,
+               later ("LINK: the gate, compressor and limiter turn both channels down together, so the stereo image stays put", limitStep))
         .getProperties().set (ParagonLookAndFeel::ledProperty, true);
 
     // SATURATION.
@@ -211,25 +217,28 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
     addButton ("sat.vcaClip", "VCA CLIP", R (459, 908, 70, 35), true, later ("VCA CLIP: a soft-to-hard clipper, like overdriving the console's VCA", colourStep));
     addKnob ("sat.tone", P (579, 926), 31, { "-12", "0", "+12" }, {}, "TONE", 0.5, later ("Saturation tone", colourStep));
 
-    // EQ: four bands.
-    struct Band { const char* id; const char* name; float top, bottom; float freqY, gainY; std::vector<juce::String> scale; bool shelf; };
+    // EQ: five bands. HF, LMF and LF have a SHELF key; HMF and MF a Q knob.
+    struct Band { const char* id; const char* name; std::vector<juce::String> scale; bool shelf; };
     const Band bands[] {
-        { "hf",  "HF",  80.0f,  274.0f, 179.0f, 172.0f, { "2k", "4k", "8k", "12k", "16k", "20k" }, true },
-        { "hmf", "HMF", 279.0f, 493.0f, 374.0f, 370.0f, { "400", "800", "1.2k", "2.5k", "5k" }, false },
-        { "mf",  "MF",  498.0f, 689.0f, 589.0f, 585.0f, { "150", "300", "600", "1.2k", "2.5k" }, false },
-        { "lmf", "LMF", 694.0f, 879.0f, 787.0f, 777.0f, { "20", "40", "80", "150", "300" }, true },
+        { "hf",  "HF",  { "2k", "4k", "8k", "12k", "16k", "20k" }, true },
+        { "hmf", "HMF", { "400", "800", "1.2k", "2.5k", "5k" }, false },
+        { "mf",  "MF",  { "150", "300", "600", "1.2k", "2.5k" }, false },
+        { "lmf", "LMF", { "40", "80", "150", "300", "600" }, true },
+        { "lf",  "LF",  { "20", "30", "50", "80", "120", "200" }, true },
     };
     for (const auto& band : bands)
     {
         const juce::String id (band.id), name (band.name);
-        addLed (id + ".on", { 684.0f, band.top + 22.0f }, later (name + " band on/off", eqStep));
-        addKnob (id + ".freq", P (732, band.freqY), 35, band.scale, "Hz", {}, 0.5, later (name + " frequency", eqStep));
-        addKnob (id + ".gain", P (857, band.gainY), 31, { "-15", "0", "+15" }, {}, "GAIN", 0.5, later (name + " gain, -15 to +15 dB", eqStep));
+        const auto plate = std::find_if (modules().begin(), modules().end(), [&] (const auto& m) { return name == m.name; })->bounds;
+        const auto freqY = plate.getY() + (band.shelf ? 86.0f : 95.0f);
+        addLed (id + ".on", { 684.0f, plate.getY() + 22.0f }, later (name + " band on/off", eqStep));
+        addKnob (id + ".freq", P (732, freqY), 33, band.scale, "Hz", {}, 0.5, later (name + " frequency", eqStep));
+        addKnob (id + ".gain", P (857, freqY - 6.0f), 29, { "-15", "0", "+15" }, {}, "GAIN", 0.5, later (name + " gain, -15 to +15 dB", eqStep));
         if (band.shelf)
         {
-            const auto y = juce::roundToInt (band.freqY + 62.0f);
-            addButton (id + ".shelf", "SHELF", R (672, y, 88, 25), true, later (name + ": shelf", eqStep)).setToggleState (true, juce::dontSendNotification);
-            addButton (id + ".shape", {}, R (776, y, 54, 25), true, later (name + ": shelf or bell curve", eqStep))
+            const auto y = juce::roundToInt (freqY + 53.0f);
+            addButton (id + ".shelf", "SHELF", R (672, y, 88, 22), true, later (name + ": shelf (lit) or bell", eqStep)).setToggleState (true, juce::dontSendNotification);
+            addButton (id + ".shape", {}, R (776, y, 54, 22), true, later (name + ": shelf or bell curve", eqStep))
                 .getProperties().set (ParagonLookAndFeel::iconProperty, "shape");
         }
         else
@@ -237,7 +246,7 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
             // As on the concept, the Q knob's scale runs round its top
             // (0.5 at the left to 4 at the right), with "Q" at the bottom
             // right: there's no room under it.
-            const auto qY = juce::jmin (band.freqY + 80.0f, band.bottom - 32.0f);
+            const auto qY = plate.getBottom() - 32.0f;
             auto& q = addKnob (id + ".q", P (800, qY), 18, {}, {}, {}, 0.5, later (name + " Q: the width of the bell", eqStep));
             q.setScale ({ { 1.0f / 6.0f, "0.5" }, { 0.5f, "1" }, { 2.0f / 3.0f, "2" }, { 5.0f / 6.0f, "4" } });
             q.addLabel (1.0f, "Q");
@@ -249,7 +258,7 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
     // FILTERS / TONE.
     addLed ("tone.on", { 962, 104 }, later ("Console colour on/off", colourStep));
     addKnob ("tone.thd", P (1021, 165), 33, { "OFF", "100" }, {}, "THD", 0.0, later ("THD: harmonic saturation and density", colourStep));
-    addKnob ("tone.vgain", P (1151, 166), 33, { "-15", "0", "+15" }, {}, "V GAIN", 0.5, later ("V GAIN: drive into the console colour, with the console's noise", colourStep));
+    addKnob ("tone.vgain", P (1151, 166), 33, { "OFF", "50", "100" }, {}, "V GAIN", 0.0, later ("V GAIN: the console's noise floor (hiss and hum), from off to audible", colourStep));
     addKnob ("tone.channel", P (1086, 290), 32, {}, {}, {}, 0.0, later ("Picks the console channels (one of 72 each side)", colourStep));
 
     // The meter window.
@@ -261,12 +270,17 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
     outputLeft.setBounds (1112, (int) meterTop, 12, meterHeight);
     outputRight.setBounds (1130, (int) meterTop, 12, meterHeight);
 
-    peakReset.setTooltip ("Clears the peak markers (the single lit segment above each meter's level)");
-    peakReset.onClick = [this]
-    {
-        for (auto* meter : getLevelMeters())
-            meter->resetPeakHold();
-    };
+    peakReset.setTooltip ("Clears the peak markers (the single lit segment above each meter's level) and OVL");
+
+    // OVL, between the IN and OUT meters: any peak past digital full scale.
+    overload.setToggleState (false, juce::dontSendNotification);
+    overload.setClickingTogglesState (false);
+    overload.setTooltip ("OVL: lights when the signal has gone past digital full scale (+20 on the meters). Click to clear.");
+    overload.onClick = [this] { resetPeakHolds(); };
+    overload.setBounds (juce::Rectangle<int> (28, 28).withCentre ({ 1080, 392 }));
+    addAndMakeVisible (overload);
+    startTimerHz (15);
+    peakReset.onClick = [this] { resetPeakHolds(); };
     peakReset.setBounds (R (30, 30).withCentre ({ 1080, 746 }));
     addAndMakeVisible (peakReset);
 
@@ -290,7 +304,7 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
     // MONO MAKER / STEREO WIDTH.
     addLed ("mono.on", { 967, 892 }, later ("Mono maker on/off", stereoStep));
     addLed ("width.on", { 1102, 892 }, later ("Stereo width on/off", stereoStep));
-    addKnob ("mono.freq", P (1020, 951), 24, { "20", "80", "200" }, "Hz", {}, 0.5, later ("Mono maker: everything below this is folded to mono", stereoStep));
+    addKnob ("mono.freq", P (1020, 951), 24, { "20", "100", "500" }, "Hz", {}, 0.5, later ("Mono maker: everything below this is folded to mono", stereoStep));
     addKnob ("width.amount", P (1155, 951), 24, { "0", "100", "200" }, "%", {}, 0.5, later ("Stereo width: 100% leaves it as it is", stereoStep));
 
     // IN / OUT: INPUT, Ø and MUTE (working).
@@ -300,6 +314,7 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
     input.setScale ({ { 0.0f, "-24" }, { 0.25f, "-12" }, { 0.5f, "0" }, { 1.0f, "+12" } });
     inputAttachment = std::make_unique<SliderAttachment> (processor.getParameters(), ParamIDs::inputGain, input.slider);
     input.slider.setDoubleClickReturnValue (true, 0.0);
+    input.slider.setPopupDisplayEnabled (true, true, this);   // shows "-6.0 dB" while it's turned
 
     auto& phase = addButton ("output.phase", {}, R (1275, 272, 115, 48), true, "Ø: flips the polarity (phase) of both channels");
     phase.getProperties().set (ParagonLookAndFeel::iconProperty, "phase");
@@ -319,13 +334,16 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
     auto& trim = addKnob ("output.trim", P (1332, 647), 34, { "-12", "0", "+12" }, {}, "OUTPUT TRIM", 0.5, "OUTPUT TRIM: fine output level, -12 to +12 dB");
     trimAttachment = std::make_unique<SliderAttachment> (processor.getParameters(), ParamIDs::outputTrim, trim.slider);
     trim.slider.setDoubleClickReturnValue (true, 0.0);
+    trim.slider.setPopupDisplayEnabled (true, true, this);
 
     fader.getProperties().set (ParagonLookAndFeel::channelFaderProperty, true);
-    fader.setTooltip ("The channel fader: the final output level, +10 to -60 dB. Double-click for 0 dB.");
+    fader.setTooltip ("The channel fader: the final output level, +10 dB down to silence at the bottom. Double-click for 0 dB.");
     fader.setBounds (juce::roundToInt (faderX) - 27, juce::roundToInt (faderTop) - ParagonLookAndFeel::channelFaderThumbRadius,
                      54, juce::roundToInt (faderBottom - faderTop) + ParagonLookAndFeel::channelFaderThumbRadius * 2);
     faderAttachment = std::make_unique<SliderAttachment> (processor.getParameters(), ParamIDs::outputLevel, fader);
     fader.setDoubleClickReturnValue (true, 0.0);
+    fader.setPopupDisplayEnabled (true, true, this);
+    fader.setVelocityModeParameters (0.25, 1, 0.0, true, juce::ModifierKeys::shiftModifier);   // Shift-drag: fine
     addAndMakeVisible (fader);
     controls["output.fader"] = &fader;
 
@@ -346,6 +364,20 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
 
     grain = Finish::makeSatinGrain (width, height, 7);
     Finish::changes().addChangeListener (this);
+}
+
+void MainView::resetPeakHolds()
+{
+    for (auto* meter : getLevelMeters())
+        meter->resetPeakHold();
+    overload.setToggleState (false, juce::dontSendNotification);
+}
+
+void MainView::timerCallback()
+{
+    const auto meters = getLevelMeters();
+    if (std::any_of (meters.begin(), meters.end(), [] (auto* meter) { return meter->hasOverloaded(); }))
+        overload.setToggleState (true, juce::dontSendNotification);
 }
 
 MainView::~MainView()
@@ -470,7 +502,7 @@ void MainView::paint (juce::Graphics& g)
     // The body: a dark frame round the modules, edged in red-orange light.
     {
         const juce::Rectangle<float> body { 13.0f, 71.0f, 1422.0f, 934.0f };
-        g.setColour (juce::Colour (0xff0e0c0e));
+        g.setColour (juce::Colour (0xff070507));
         g.fillRoundedRectangle (body, 16.0f);
         for (const auto& [alpha, thickness] : { std::pair (0.07f, 16.0f), { 0.16f, 8.0f }, { 0.4f, 4.0f }, { 0.9f, 1.6f } })
         {
@@ -486,8 +518,6 @@ void MainView::paint (juce::Graphics& g)
         drawPlate (g, module.bounds, hasHeader (module.name));
         plates.addRoundedRectangle (module.bounds, 8.0f);
     }
-    drawPlate (g, blankPlate, false);
-    plates.addRoundedRectangle (blankPlate, 8.0f);
     {
         juce::Graphics::ScopedSaveState state (g);
         g.reduceClipRegion (plates);
@@ -503,9 +533,6 @@ void MainView::paint (juce::Graphics& g)
         if (! hasHeader (module.name))
             drawScrew (g, inner.getTopLeft());
     }
-    for (auto corner : { blankPlate.reduced (14.0f).getTopLeft(), blankPlate.reduced (14.0f).getTopRight(),
-                         blankPlate.reduced (14.0f).getBottomLeft(), blankPlate.reduced (14.0f).getBottomRight() })
-        drawScrew (g, corner);
 
     // Module titles, beside their lamps.
     const auto title = [&] (const juce::String& text, float x, float y, juce::Justification justification = juce::Justification::centredLeft)
@@ -519,8 +546,9 @@ void MainView::paint (juce::Graphics& g)
     title ("COMP", 394.0f, 104.0f);
     title ("LIMIT", 396.0f, 538.0f);
     title ("SATURATION", 396.0f, 850.0f);
-    for (const auto& [name, y] : { std::pair ("HF", 102.0f), { "HMF", 301.0f }, { "MF", 520.0f }, { "LMF", 716.0f } })
-        title (name, 704.0f, y);
+    for (const auto& module : modules())
+        if (juce::StringArray { "HF", "HMF", "MF", "LMF", "LF" }.contains (module.name))
+            title (module.name, 704.0f, module.bounds.getY() + 22.0f);
     title ("FILTERS / TONE", 982.0f, 104.0f);
     drawStamped (g, "MONO MAKER", { 984.0f, 881.0f, 120.0f, 22.0f }, 14.5f, juce::Justification::centredLeft);
     drawStamped (g, "STEREO WIDTH", { 1118.0f, 881.0f, 104.0f, 22.0f }, 14.5f, juce::Justification::centredLeft);
@@ -534,7 +562,7 @@ void MainView::paint (juce::Graphics& g)
     drawStamped (g, "LINEAR", { 180.0f, 676.0f, 66.0f, 14.0f }, 12.0f, juce::Justification::centredRight);
     drawStamped (g, "LISTEN", { 127.0f, 935.0f, 70.0f, 16.0f }, 13.5f, juce::Justification::centredLeft);
     drawStamped (g, "HIGH Q", { 236.0f, 935.0f, 70.0f, 16.0f }, 13.5f, juce::Justification::centredLeft);
-    drawStamped (g, "AUTO", { 590.0f, 408.0f, 52.0f, 14.0f }, 12.0f);
+    drawStamped (g, "AUTO", { 504.0f, 346.0f, 52.0f, 14.0f }, 11.0f);
     drawStamped (g, "LEFT", { 965.0f, 318.0f, 77.0f, 16.0f }, 13.0f);
     drawStamped (g, "RIGHT", { 1129.0f, 318.0f, 77.0f, 16.0f }, 13.0f);
     drawStamped (g, "RANDOM CH.", { 1235.0f, 500.0f, 190.0f, 16.0f }, 12.5f);
@@ -609,6 +637,9 @@ void MainView::paint (juce::Graphics& g)
                 g.drawText (signedDb (db), juce::Rectangle<float> (34.0f, 14.0f).withCentre ({ x, y }), juce::Justification::centred, false);
         }
 
+        g.setFont (juce::FontOptions (10.5f, juce::Font::bold));
+        g.drawText ("OVL", juce::Rectangle<float> (40.0f, 12.0f).withCentre ({ 1080.0f, 412.0f }), juce::Justification::centred, false);
+
         g.setFont (juce::FontOptions (13.0f, juce::Font::bold));
         g.drawText ("IN", juce::Rectangle<float> (40.0f, 16.0f).withCentre ({ 1033.0f, 748.0f }), juce::Justification::centred, false);
         g.drawText ("OUT", juce::Rectangle<float> (40.0f, 16.0f).withCentre ({ 1127.0f, 748.0f }), juce::Justification::centred, false);
@@ -628,7 +659,10 @@ void MainView::paint (juce::Graphics& g)
             const auto y = faderBottom - Parameters::faderProportion (db) * (faderBottom - faderTop);
             g.setColour (Finish::ink().withAlpha (0.85f));
             g.fillRect (juce::Rectangle<float> (1293.0f, y - 0.7f, 80.0f, 1.4f));
-            drawStamped (g, juce::String (juce::roundToInt (db)), { 1244.0f, y - 8.0f, 42.0f, 16.0f }, 13.0f, juce::Justification::centredRight);
+            // The bottom of the fader is silence.
+            const auto label = i + 1 == (int) std::size (ParamRanges::faderMarksDb) ? juce::String (juce::CharPointer_UTF8 ("-\xe2\x88\x9e"))
+                                                                                     : juce::String (juce::roundToInt (db));
+            drawStamped (g, label, { 1244.0f, y - 8.0f, 42.0f, 16.0f }, 13.0f, juce::Justification::centredRight);
 
             if (i + 1 < (int) std::size (ParamRanges::faderMarksDb))
             {

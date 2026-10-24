@@ -16,6 +16,12 @@ namespace Parameters
 
         juce::String onOff (bool on, int) { return on ? "On" : "Off"; }
 
+        // The fader: at the very bottom it's off.
+        juce::String faderDbText (float value, int length)
+        {
+            return value <= ParamRanges::outputLevelMin ? juce::String ("-inf dB") : asDb (value, length);
+        }
+
         // INPUT: 0 dB sits at the top of the knob (half way), so there's as
         // much travel for cutting -24 dB as for adding +12.
         juce::NormalisableRange<float> inputRange()
@@ -80,7 +86,7 @@ namespace Parameters
         // fader; the ID stays, so projects keep their level.
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { ParamIDs::outputLevel, firstVersion }, "Output Level", faderRange(), 0.0f,
-            juce::AudioParameterFloatAttributes().withLabel ("dB").withStringFromValueFunction (asDb)));
+            juce::AudioParameterFloatAttributes().withLabel ("dB").withStringFromValueFunction (faderDbText)));
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { ParamIDs::inputGain, panelVersion }, "Input", inputRange(), 0.0f,
             juce::AudioParameterFloatAttributes().withLabel ("dB").withStringFromValueFunction (asDb)));

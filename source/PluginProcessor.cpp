@@ -34,7 +34,8 @@ void ParagonPR7CAudioProcessor::prepareToPlay (double sampleRate, int)
 
 float ParagonPR7CAudioProcessor::targetOutputGain() const noexcept
 {
-    if (mute->load() >= 0.5f)
+    // MUTE, or the fader right at the bottom: silence.
+    if (mute->load() >= 0.5f || outputLevel->load() <= ParamRanges::outputLevelMin)
         return 0.0f;
     const auto gain = juce::Decibels::decibelsToGain (outputTrim->load() + outputLevel->load());
     return phaseInvert->load() >= 0.5f ? -gain : gain;

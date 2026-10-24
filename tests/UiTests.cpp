@@ -67,7 +67,7 @@ TEST_CASE ("Every module's place is inside the window and none overlap", "[ui]")
 {
     const auto canvas = juce::Rectangle<float> ((float) MainView::width, (float) MainView::height);
     const auto& modules = MainView::modules();
-    REQUIRE (modules.size() == 15);
+    REQUIRE (modules.size() == 16);
     for (size_t i = 0; i < modules.size(); ++i)
     {
         CHECK (canvas.contains (modules[i].bounds));
@@ -110,7 +110,7 @@ TEST_CASE ("Every module has its on lamp", "[ui]")
     std::unique_ptr<juce::AudioProcessorEditor> editor (processor.createEditor());
     auto& view = viewOf (*editor);
     for (const auto* id : { "hpf.on", "lpf.on", "gate.on", "sc.on", "comp.on", "limit.on", "sat.on",
-                            "hf.on", "hmf.on", "mf.on", "lmf.on", "tone.on", "mono.on", "width.on", "output.on" })
+                            "hf.on", "hmf.on", "mf.on", "lmf.on", "lf.on", "tone.on", "mono.on", "width.on", "output.on" })
     {
         INFO (id);
         CHECK (dynamic_cast<Led*> (view.findControl (id)) != nullptr);
@@ -162,7 +162,8 @@ TEST_CASE ("The meters hold the highest peak until it's reset", "[ui]")
     auto& view = viewOf (*editor);
     auto* inputLeft = view.getLevelMeters()[0];
 
-    // One loud block (-6 dBFS), then quiet: the meter falls, the peak stays.
+    // One loud block (-6 dBFS, +14 on the console scale), then quiet: the
+    // meter falls, the peak stays.
     juce::AudioBuffer<float> buffer (2, 256);
     juce::MidiBuffer midi;
     buffer.clear();
@@ -170,7 +171,7 @@ TEST_CASE ("The meters hold the highest peak until it's reset", "[ui]")
     processor.processBlock (buffer, midi);
     for (int round = 0; round < 3; ++round)   // the first round only starts the timers' clock
         runTimers (40);
-    CHECK_THAT (inputLeft->getPeakHoldDb(), WithinAbs (-6.02, 0.05));
+    CHECK_THAT (inputLeft->getPeakHoldDb(), WithinAbs (13.98, 0.05));
 
     buffer.clear();
     for (int round = 0; round < 10; ++round)
@@ -178,10 +179,41 @@ TEST_CASE ("The meters hold the highest peak until it's reset", "[ui]")
         processor.processBlock (buffer, midi);
         runTimers (40);
     }
-    CHECK (inputLeft->getDisplayedDb() < -10.0f);
-    CHECK_THAT (inputLeft->getPeakHoldDb(), WithinAbs (-6.02, 0.05));
+    CHECK (inputLeft->getDisplayedDb() < inputLeft->getPeakHoldDb() - 6.0f);   // fallen well below the held peak
+    CHECK_THAT (inputLeft->getPeakHoldDb(), WithinAbs (13.98, 0.05));
 
     view.getPeakHoldReset().onClick();   // what a click does (triggerClick() would only queue it)
     runTimers (40);
     CHECK (inputLeft->getPeakHoldDb() <= LevelMeter::minDb);
+}
+
+TEST_CASE ("OVL lights when the signal goes past digital full scale, until it's cleared", "[ui]")
+{
+    ParagonPR7CAudioProcessor processor;
+    processor.prepareToPlay (48000.0, 256);
+    std::unique_ptr<juce::AudioProcessorEditor> editor (processor.createEditor());
+    auto& view = viewOf (*editor);
+
+    juce::AudioBuffer<float> buffer (2, 256);
+    juce::MidiBuffer midi;
+    const auto play = [&] (float level)
+    {
+        buffer.clear();
+        buffer.setSample (1, 10, level);
+        for (int round = 0; round < 3; ++round)
+        {
+            processor.processBlock (buffer, midi);
+            runTimers (70);
+        }
+    };
+
+    play (0.99f);   // just under full scale: no
+    CHECK (! view.getOverloadLamp().getToggleState());
+    play (1.2f);    // over it
+    CHECK (view.getOverloadLamp().getToggleState());
+    play (0.0f);    // stays lit after the overload has passed
+    CHECK (view.getOverloadLamp().getToggleState());
+
+    view.getPeakHoldReset().onClick();
+    CHECK (! view.getOverloadLamp().getToggleState());
 }

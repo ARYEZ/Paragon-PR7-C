@@ -242,3 +242,16 @@ TEST_CASE ("MUTE silences the output", "[processor]")
     process (processor, more);
     CHECK (processor.getOutputMeter (0).takePeak() == 0.0f);
 }
+
+TEST_CASE ("The fader at the very bottom is silence", "[processor]")
+{
+    ParagonPR7CAudioProcessor processor;
+    processor.prepareToPlay (sampleRate, blockSize);
+    setParameter (processor, ParamIDs::outputLevel, ParamRanges::outputLevelMin);
+
+    auto output = stereoTone (9600);
+    process (processor, output);
+    for (int channel = 0; channel < 2; ++channel)
+        CHECK (output.getMagnitude (channel, 4800, 4800) == 0.0f);
+    CHECK (processor.getParameters().getParameter (ParamIDs::outputLevel)->getCurrentValueAsText() == "-inf dB");
+}
