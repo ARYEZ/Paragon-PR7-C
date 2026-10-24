@@ -71,6 +71,12 @@ namespace ParamIDs
     inline constexpr auto satVcaClip = "satVcaClip";
     inline constexpr auto satMix = "satMix";                 // %
 
+    // FILTERS / TONE: the console colour.
+    inline constexpr auto toneOn = "toneOn";                 // the module's lamp: THD, noise and the channels' differences
+    inline constexpr auto toneThd = "toneThd";               // %
+    inline constexpr auto toneVGain = "toneVGain";           // %: the noise floor
+    inline constexpr auto toneChannel = "toneChannel";       // 1 to 72: the left side's console channel (the right uses the next)
+
     // LINK, on the LIMIT panel: links the gate, compressor and limiter.
     inline constexpr auto dynamicsLink = "dynamicsLink";
 }

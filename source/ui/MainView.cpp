@@ -448,6 +448,27 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
     attachKnob ("sat.mix", ParamIDs::satMix, { { 0.0f, "0" }, { 100.0f, "100" } },
                 "Mix: the saturated sound blended with the dry, for parallel saturation");
 
+    // FILTERS / TONE: the console colour (step 6).
+    attachButton ("tone.on", ParamIDs::toneOn,
+                  "Console colour on/off: THD, the noise floor and the console channels' small differences. Off, both sides are the exact design.");
+    attachKnob ("tone.thd", ParamIDs::toneThd, { { 0.0f, "OFF" }, { 100.0f, "100" } },
+                "THD: the console's own harmonics and density. Subtle at normal levels, more as you run it hot. The level stays the same.");
+    attachKnob ("tone.vgain", ParamIDs::toneVGain, { { 0.0f, "OFF" }, { 50.0f, "50" }, { 100.0f, "100" } },
+                "V GAIN: the console's noise floor, hiss and a little mains hum, from off to audible");
+    attachKnob ("tone.channel", ParamIDs::toneChannel, {},
+                "Console channel: each of the 72 has its own small differences in the EQ, filters, THD and noise. "
+                "LEFT shows the left side's channel; the right side uses the next one. Channel 1 is the exact design.");
+    {
+        auto* parameter = processor.getParameters().getParameter (ParamIDs::toneChannel);
+        auto attachment = std::make_unique<juce::ParameterAttachment> (*parameter, [this] (float value)
+        {
+            channelNumber = juce::jlimit (1, 72, juce::roundToInt (value));
+            repaint (juce::Rectangle<int> (960, 250, 250, 66));
+        });
+        attachment->sendInitialUpdate();
+        switchAttachments.push_back (std::move (attachment));
+    }
+
     // LIMIT (step 4).
     attachButton ("limit.on", ParamIDs::limitOn, "Limiter on/off. A peak limiter with no look-ahead, so it adds no delay.");
     attachKnob ("limit.threshold", ParamIDs::limitThreshold,
@@ -777,8 +798,10 @@ void MainView::paint (juce::Graphics& g)
         g.setFont (juce::FontOptions (10.5f, juce::Font::bold));
         g.drawText ("CONSOLE CHANNEL", badge, juce::Justification::centred, false);
 
-        for (const auto& [area, number] : { std::pair (juce::Rectangle<float> (965.0f, 256.0f, 77.0f, 56.0f), "01"),
-                                            { juce::Rectangle<float> (1129.0f, 256.0f, 77.0f, 56.0f), "02" } })
+        const auto twoDigits = [] (int number) { return juce::String (number).paddedLeft ('0', 2); };
+        const auto left = twoDigits (channelNumber), right = twoDigits (channelNumber % 72 + 1);
+        for (const auto& [area, number] : { std::pair (juce::Rectangle<float> (965.0f, 256.0f, 77.0f, 56.0f), left),
+                                            { juce::Rectangle<float> (1129.0f, 256.0f, 77.0f, 56.0f), right } })
         {
             const auto glass = LedDisplay::paintScreen (g, area, 0.5f);
             auto digits = glass.reduced (glass.getWidth() * 0.16f, glass.getHeight() * 0.2f);

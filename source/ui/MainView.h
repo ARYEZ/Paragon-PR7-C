@@ -13,7 +13,8 @@
 // Every module's panel is drawn with all its controls, placed as on the
 // concept. Most are inert until their module's DSP is built (see CLAUDE.md
 // for the order): each step attaches its controls to parameters, found by
-// their IDs here. Working now: HPF / LPF, the EQ, INPUT, Ø, MUTE, OUTPUT
+// their IDs here. Working now: HPF / LPF, the EQ, the dynamics, the
+// saturation and console colour, INPUT, Ø, MUTE, OUTPUT
 // TRIM, the fader, the meters, and the finish (from the settings gear).
 class MainView final : public juce::Component,
                        private juce::ChangeListener,
@@ -91,6 +92,8 @@ private:
     std::vector<std::unique_ptr<SliderAttachment>> knobAttachments;
     std::vector<std::unique_ptr<ButtonAttachment>> buttonAttachments;
     std::vector<std::unique_ptr<juce::ParameterAttachment>> switchAttachments;
+
+    int channelNumber = 1;   // the left side's console channel, for the displays (the right shows the next)
 
     // The satin grain over the panels, made for the current finish.
     juce::Image grain;

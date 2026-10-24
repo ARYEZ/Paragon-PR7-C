@@ -6,6 +6,8 @@
 #include "Parameters.h"
 #include "dsp/ChannelEq.h"
 #include "dsp/Compressor.h"
+#include "dsp/ConsoleChannel.h"
+#include "dsp/ConsoleColour.h"
 #include "dsp/Gate.h"
 #include "dsp/Limiter.h"
 #include "dsp/Saturation.h"
@@ -13,7 +15,8 @@
 // The channel strip. True stereo (stereo in, stereo out), or mono in, mono
 // out on a mono track. So far: INPUT, the HPF / LPF, the gate / expander
 // and SC FILTER, the compressor, the five-band EQ, the limiter, the
-// saturation, the OUTPUT column (Ø, MUTE, OUTPUT TRIM and the fader) and
+// saturation, the console colour (THD, V GAIN and the console channels),
+// the OUTPUT column (Ø, MUTE, OUTPUT TRIM and the fader) and
 // the meters. The other modules are built one at a time (see CLAUDE.md).
 class ParagonPR7CAudioProcessor final : public juce::AudioProcessor
 {
@@ -80,14 +83,27 @@ private:
     // in SC they leave the audio alone), and the EQ bands, top to bottom.
     struct FilterParameters { std::atomic<float>* hpfOn, * hpfFrequency, * lpfOn, * lpfFrequency, * placement; };
     struct BandParameters { std::atomic<float>* on, * frequency, * gain, * q, * shelf; };   // q or shelf is null
+    // Each side has its own, as each side can be a different console
+    // channel, with slightly different frequencies and gains.
     FilterParameters filterParameters {};
     std::array<BandParameters, std::size (ParamRanges::eqBands)> bandParameters {};
-    effects::CutFilters filtersIn, filtersPost;
-    std::array<effects::EqBand, std::size (ParamRanges::eqBands)> eqBands {
-        effects::EqBand (effects::EqBand::Shelf::high), effects::EqBand (effects::EqBand::Shelf::none), effects::EqBand (effects::EqBand::Shelf::none),
-        effects::EqBand (effects::EqBand::Shelf::low), effects::EqBand (effects::EqBand::Shelf::low)
-    };
-    effects::CutFilters::Settings filterSettings (int placement) const noexcept;
+    using EqBands = std::array<effects::EqBand, std::size (ParamRanges::eqBands)>;
+    static EqBands makeEqBands();
+    std::array<effects::CutFilters, 2> filtersIn, filtersPost;
+    std::array<EqBands, 2> eqBands { makeEqBands(), makeEqBands() };
+    effects::CutFilters::Settings filterSettings (int placement, const effects::ConsoleChannel& = {}) const noexcept;
+    // The HPF / LPF or the EQ, run on each side with its channel's differences.
+    void processFilters (std::array<effects::CutFilters, 2>&, juce::AudioBuffer<float>&, int numSamples, int placement) noexcept;
+    void processEq (juce::AudioBuffer<float>&, int numSamples) noexcept;
+
+    // FILTERS / TONE: the console colour, and each side's console channel
+    // (all the design's own values while the module is off).
+    struct ToneParameters { std::atomic<float>* on, * thd, * vGain, * channel; };
+    ToneParameters toneParameters {};
+    effects::ConsoleColour colour;
+    std::array<effects::ConsoleChannel, 2> sides;
+    std::array<int, 2> sideNumbers { 1, 1 };   // the channels `sides` holds (0: none yet)
+    void updateSides() noexcept;
 
     // The gate and compressor, and their shared sidechain: what their
     // detectors hear (the audio at the gate's input, through the HPF / LPF

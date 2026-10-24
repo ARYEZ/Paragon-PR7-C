@@ -53,6 +53,7 @@ target_sources(ParagonPR7C
         source/dsp/Limiter.cpp
         source/dsp/Gate.cpp
         source/dsp/Saturation.cpp
+        source/dsp/ConsoleColour.cpp
         source/ui/MainView.cpp
         source/ui/Controls.cpp
         source/ui/LevelMeter.cpp

@@ -20,7 +20,7 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
     processor.prepareToPlay (48000.0, 256);
 
     // PARAGON_SNAPSHOT_DEMO=1: some modules switched on and set, to show
-    // them working (the expander, the compressor squeezing with make-up, then the limiter and saturation).
+    // them working (the expander, the compressor squeezing with make-up, then the limiter, saturation and console colour).
     if (juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_DEMO", {}) == "1")
     {
         for (const auto& [id, value] : { std::pair (ParamIDs::compOn, 1.0f), { ParamIDs::compThreshold, -32.0f }, { ParamIDs::compMakeUp, 6.0f },
@@ -28,7 +28,8 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
                                          { ParamIDs::limitMakeUp, 4.0f }, { ParamIDs::gateOn, 1.0f }, { ParamIDs::gateThreshold, 0.0f },
                                          { ParamIDs::gateExpander, 1.0f }, { ParamIDs::gateRatio, 1.5f }, { ParamIDs::gateHold, 0.0f },
                                          { ParamIDs::gateRelease, 5.0f }, { ParamIDs::scOn, 1.0f }, { ParamIDs::satOn, 1.0f },
-                                         { ParamIDs::satDrive, 12.0f } })
+                                         { ParamIDs::satDrive, 12.0f }, { ParamIDs::toneThd, 60.0f }, { ParamIDs::toneVGain, 30.0f },
+                                         { ParamIDs::toneChannel, 28.0f } })
         {
             auto* parameter = processor.getParameters().getParameter (id);
             parameter->setValueNotifyingHost (parameter->convertTo0to1 (value));

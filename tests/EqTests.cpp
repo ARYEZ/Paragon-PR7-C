@@ -224,7 +224,15 @@ TEST_CASE ("The EQ and filters treat both channels alike, and work on a mono tra
     auto strip = makeStrip();
     set (*strip, ParamIDs::eqGain ("mf"), 9.0f);
     set (*strip, ParamIDs::hpfOn, 1.0f);
+
+    // By default the right side is console channel 2, a hair different from
+    // channel 1 on the left. With the console colour off, both are the design.
+    const auto difference = std::abs (responseDb (*strip, 600.0f, 1) - responseDb (*strip, 600.0f, 0));
+    CHECK (difference > 0.0001f);
+    CHECK (difference < 0.5f);
+    set (*strip, ParamIDs::toneOn, 0.0f);
     CHECK_THAT (responseDb (*strip, 600.0f, 1), WithinAbs (responseDb (*strip, 600.0f, 0), 0.01));
+    set (*strip, ParamIDs::toneOn, 1.0f);
 
     // Mono: one channel in and out.
     juce::AudioProcessor::BusesLayout mono;

@@ -10,6 +10,12 @@ Each version's notes appear on its GitHub Release page.
   - **VCA CLIP** flattens the loudest peaks harder, for crunch.
   - **MIX** (a small knob under VCA CLIP) blends in the dry sound, for parallel saturation.
   - It runs at four times the sample rate, so driving it hard doesn't add harsh aliasing. While it's on, that delays the sound by about 0.1 ms, far too little to hear.
+- **The console colour works** (FILTERS / TONE). Our own design:
+  - **THD** adds the console's own gentle harmonics: barely there at normal levels, more as you run it hot, like a real console's amplifiers. The level stays the same.
+  - **V GAIN** adds the console's noise floor: hiss (different on each side) and a little mains hum. Off by default.
+  - **The channel knob** picks one of **72 console channels**, each with its own tiny, fixed differences in the EQ, filters, THD and noise. LEFT shows the left side's channel; the right side uses the next one, so left and right are never quite identical, like a real stereo pair on a console. **Channel 1 is the exact design.** Defaults: 1 / 2.
+  - The FILTERS / TONE lamp switches all of it off: both sides are then the exact design.
+  - In songs saved with earlier versions, the EQ and filters on the right side now follow channel 2, so they differ from the left by a fraction of a dB. Switch the FILTERS / TONE lamp off to get the old, identical sides back.
 
 ## 0.3.0
 

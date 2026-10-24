@@ -13,6 +13,7 @@ namespace Parameters
         constexpr int limitVersion = 5;   // the limiter
         constexpr int gateVersion = 6;    // the gate / expander and the SC FILTER
         constexpr int satVersion = 7;     // the saturation
+        constexpr int toneVersion = 8;    // the console colour (THD, V GAIN, the channels)
 
         // RATIO: the marks evenly round the knob, log-even between them. The
         // bottom stretch (below 1.25) is the SOFT position.
@@ -330,6 +331,23 @@ namespace Parameters
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { ParamIDs::satMix, satVersion }, "Sat Mix", juce::NormalisableRange<float> (0.0f, 100.0f, 1.0f), 100.0f,
             juce::AudioParameterFloatAttributes().withLabel ("%").withStringFromValueFunction (percent)));
+
+        // FILTERS / TONE: the console colour.
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { ParamIDs::toneOn, toneVersion }, "Console Colour", true,
+                                                                juce::AudioParameterBoolAttributes().withStringFromValueFunction (onOff)));
+        const auto offOrPercent = [] (float v, int) { return juce::roundToInt (v) == 0 ? juce::String ("OFF") : juce::String (juce::roundToInt (v)) + "%"; };
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { ParamIDs::toneThd, toneVersion }, "THD", juce::NormalisableRange<float> (0.0f, 100.0f, 1.0f), 0.0f,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (offOrPercent)));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { ParamIDs::toneVGain, toneVersion }, "V Gain", juce::NormalisableRange<float> (0.0f, 100.0f, 1.0f), 0.0f,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (offOrPercent)));
+        layout.add (std::make_unique<juce::AudioParameterInt> (
+            juce::ParameterID { ParamIDs::toneChannel, toneVersion }, "Console Channel", 1, 72, 1,
+            juce::AudioParameterIntAttributes().withStringFromValueFunction ([] (int left, int)
+            {
+                return juce::String (left) + " / " + juce::String (left % 72 + 1);
+            })));
         return layout;
     }
 }

@@ -33,8 +33,16 @@ ParagonPR7CAudioProcessor::ParagonPR7CAudioProcessor()
     scParameters = { raw (ParamIDs::scOn), raw (ParamIDs::scHpf), raw (ParamIDs::scLpf), raw (ParamIDs::scListen), raw (ParamIDs::scHighQ) };
     satParameters = { raw (ParamIDs::satOn), raw (ParamIDs::satDrive), raw (ParamIDs::satHarmonics), raw (ParamIDs::satVcaClip),
                       raw (ParamIDs::satMix) };
+    toneParameters = { raw (ParamIDs::toneOn), raw (ParamIDs::toneThd), raw (ParamIDs::toneVGain), raw (ParamIDs::toneChannel) };
     limitParameters = { raw (ParamIDs::limitOn), raw (ParamIDs::limitThreshold), raw (ParamIDs::limitMakeUp), raw (ParamIDs::limitMode),
                         raw (ParamIDs::limitMix) };
+}
+
+ParagonPR7CAudioProcessor::EqBands ParagonPR7CAudioProcessor::makeEqBands()
+{
+    using Shelf = effects::EqBand::Shelf;
+    return { effects::EqBand (Shelf::high), effects::EqBand (Shelf::none), effects::EqBand (Shelf::none),
+             effects::EqBand (Shelf::low), effects::EqBand (Shelf::low) };
 }
 
 bool ParagonPR7CAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -57,23 +65,70 @@ void ParagonPR7CAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     listen.setCurrentAndTargetValue (scParameters.listen->load() >= 0.5f ? 1.0f : 0.0f);
     limiter.prepare (sampleRate, maxBlockSize);
     saturation.prepare (sampleRate, maxBlockSize);
+    colour.prepare (sampleRate, maxBlockSize);
     filtersSidechain.prepare (sampleRate);
     for (auto* gain : { &inputGain, &outputGain })
         gain->reset (sampleRate, 0.02);
     inputGain.setCurrentAndTargetValue (juce::Decibels::decibelsToGain (inputGainDb->load()));
-    for (auto* filters : { &filtersIn, &filtersPost })
-        filters->prepare (sampleRate);
-    for (auto& band : eqBands)
-        band.prepare (sampleRate);
+    for (int side = 0; side < 2; ++side)
+    {
+        for (auto* filters : { &filtersIn, &filtersPost })
+            (*filters)[(size_t) side].prepare (sampleRate);
+        for (auto& band : eqBands[(size_t) side])
+            band.prepare (sampleRate);
+    }
     outputGain.setCurrentAndTargetValue (targetOutputGain());
 }
 
-effects::CutFilters::Settings ParagonPR7CAudioProcessor::filterSettings (int placement) const noexcept
+effects::CutFilters::Settings ParagonPR7CAudioProcessor::filterSettings (int placement, const effects::ConsoleChannel& channel) const noexcept
 {
     // The filters only touch the audio when the switch puts them here.
     const auto here = juce::roundToInt (filterParameters.placement->load()) == placement;
     return { here && filterParameters.hpfOn->load() >= 0.5f, here && filterParameters.lpfOn->load() >= 0.5f,
-             filterParameters.hpfFrequency->load(), filterParameters.lpfFrequency->load() };
+             filterParameters.hpfFrequency->load() * channel.highPass, filterParameters.lpfFrequency->load() * channel.lowPass };
+}
+
+void ParagonPR7CAudioProcessor::updateSides() noexcept
+{
+    // Off, both sides are the design itself (channel 1). On, the left side
+    // is the chosen channel and the right the next one.
+    const auto on = toneParameters.on->load() >= 0.5f;
+    const auto left = on ? juce::roundToInt (toneParameters.channel->load()) : 1;
+    const std::array<int, 2> wanted { left, on ? effects::ConsoleChannel::nextTo (left) : 1 };
+    for (size_t side = 0; side < 2; ++side)
+    {
+        if (wanted[side] != sideNumbers[side])
+        {
+            sides[side] = effects::ConsoleChannel::number (wanted[side]);
+            sideNumbers[side] = wanted[side];
+        }
+    }
+}
+
+void ParagonPR7CAudioProcessor::processFilters (std::array<effects::CutFilters, 2>& filters, juce::AudioBuffer<float>& buffer,
+                                                int numSamples, int placement) noexcept
+{
+    for (int side = 0; side < juce::jmin (2, buffer.getNumChannels()); ++side)
+    {
+        juce::AudioBuffer<float> one (buffer.getArrayOfWritePointers() + side, 1, numSamples);
+        filters[(size_t) side].process (one, numSamples, filterSettings (placement, sides[(size_t) side]));
+    }
+}
+
+void ParagonPR7CAudioProcessor::processEq (juce::AudioBuffer<float>& buffer, int numSamples) noexcept
+{
+    for (int side = 0; side < juce::jmin (2, buffer.getNumChannels()); ++side)
+    {
+        juce::AudioBuffer<float> one (buffer.getArrayOfWritePointers() + side, 1, numSamples);
+        const auto& channel = sides[(size_t) side];
+        for (size_t i = 0; i < eqBands[(size_t) side].size(); ++i)
+        {
+            const auto& p = bandParameters[i];
+            eqBands[(size_t) side][i].process (one, numSamples, { p.on->load() >= 0.5f, p.frequency->load() * channel.eqFrequency[i],
+                                                                  p.gain->load() * channel.eqGain[i], p.q != nullptr ? p.q->load() : 1.0f,
+                                                                  p.shelf != nullptr && p.shelf->load() >= 0.5f });
+        }
+    }
 }
 
 float ParagonPR7CAudioProcessor::targetOutputGain() const noexcept
@@ -136,7 +191,8 @@ void ParagonPR7CAudioProcessor::processModules (juce::AudioBuffer<float>& buffer
 {
     // In their fixed order (see CLAUDE.md).
     constexpr int filtersAtInput = 0, filtersAfterDynamics = 1, filtersInSidechain = 2;   // the IN / POST / SC switch's positions
-    filtersIn.process (buffer, numSamples, filterSettings (filtersAtInput));
+    updateSides();
+    processFilters (filtersIn, buffer, numSamples, filtersAtInput);
 
     // What the gate and compressor listen to: the audio here, through the
     // HPF / LPF when they're set to SC, and the SC FILTER.
@@ -169,14 +225,8 @@ void ParagonPR7CAudioProcessor::processModules (juce::AudioBuffer<float>& buffer
     compGainChange.push (juce::jmax (compressor.getReductionDb (0), compressor.getReductionDb (1)));
     compMakeUpShown.store (c.on->load() >= 0.5f ? c.makeUp->load() : 0.0f);
 
-    for (size_t i = 0; i < eqBands.size(); ++i)
-    {
-        const auto& p = bandParameters[i];
-        eqBands[i].process (buffer, numSamples, { p.on->load() >= 0.5f, p.frequency->load(), p.gain->load(),
-                                                  p.q != nullptr ? p.q->load() : 1.0f, p.shelf != nullptr && p.shelf->load() >= 0.5f });
-    }
-
-    filtersPost.process (buffer, numSamples, filterSettings (filtersAfterDynamics));
+    processEq (buffer, numSamples);
+    processFilters (filtersPost, buffer, numSamples, filtersAfterDynamics);
 
     const auto& l = limitParameters;
     limiter.process (buffer, numSamples,
@@ -190,7 +240,22 @@ void ParagonPR7CAudioProcessor::processModules (juce::AudioBuffer<float>& buffer
     saturation.process (buffer, numSamples, { s.on->load() >= 0.5f, s.drive->load(), s.harmonics->load() / 100.0f,
                                               s.vcaClip->load() >= 0.5f, s.mix->load() / 100.0f });
 
-    // The console colour and the stereo tools will go here.
+    // The console colour: THD and the noise floor, each side with its channel's amounts.
+    const auto& t = toneParameters;
+    const auto colourOn = t.on->load() >= 0.5f;
+    effects::ConsoleColour::Settings colourSettings;
+    colourSettings.thd = colourOn ? t.thd->load() / 100.0f : 0.0f;
+    colourSettings.noise = colourOn ? t.vGain->load() / 100.0f : 0.0f;
+    for (size_t side = 0; side < 2; ++side)
+    {
+        colourSettings.second[side] = sides[side].second;
+        colourSettings.third[side] = sides[side].third;
+        colourSettings.hissDb[side] = sides[side].hissDb;
+        colourSettings.humDb[side] = sides[side].humDb;
+    }
+    colour.process (buffer, numSamples, colourSettings);
+
+    // The stereo tools will go here.
 
     // LISTEN: hear what the gate and compressor hear instead (a 20 ms crossfade).
     listen.setTargetValue (sc.listen->load() >= 0.5f ? 1.0f : 0.0f);

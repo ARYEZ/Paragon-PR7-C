@@ -14,11 +14,12 @@ Unlike PR7-B and PR7-V, it is **not** a copy of PR7-G. It was seeded lean: PR7-G
 
 - **The plugin:** true stereo (stereo in/out, or mono in/out on a mono track).
   - Its own identity: `Paragon PR7-C`, plugin code `Pr7c`, bundle `com.paragon.paragonpr7c`, maker code `Prgn`.
-  - Parameters: `inputGain`, `outputTrim`, `outputLevel` (the fader), `phaseInvert`, `mute`; the HPF / LPF (`hpfOn`, `hpfFreq`, `lpfOn`, `lpfFreq`, `filterPlacement`); the EQ (`<band>On/Freq/Gain` plus `<band>Q` or `<band>Shelf`, bands from `ParamRanges::eqBands`); the gate (`gate*`), SC FILTER (`sc*`), compressor (`comp*`), limiter (`limit*`), saturation (`sat*`) and `dynamicsLink`. Input and output peak meters (console-calibrated, with OVL), and gain-reduction sources (`getGainReduction`) for the GR meters, which stay at 0 until the dynamics exist.
+  - Parameters: `inputGain`, `outputTrim`, `outputLevel` (the fader), `phaseInvert`, `mute`; the HPF / LPF (`hpfOn`, `hpfFreq`, `lpfOn`, `lpfFreq`, `filterPlacement`); the EQ (`<band>On/Freq/Gain` plus `<band>Q` or `<band>Shelf`, bands from `ParamRanges::eqBands`); the gate (`gate*`), SC FILTER (`sc*`), compressor (`comp*`), limiter (`limit*`), saturation (`sat*`), the console colour (`toneOn`, `toneThd`, `toneVGain`, `toneChannel`) and `dynamicsLink`. Input and output peak meters (console-calibrated, with OVL), and gain-reduction sources (`getGainReduction`) for the GR meters, which stay at 0 until the dynamics exist.
 - **`source/ui/MainView`:** a fixed **1448 × 1086** canvas, exactly the concept image's size, so coordinates can be read straight off `docs/concept.png`. The editor scales it to the window.
   - **Step 1 is done:** every module's panel is drawn with all its controls, placed as on the concept. `MainView::modules()` holds each module's rectangle.
   - Controls are registered by ID (`"comp.ratio"`, `"hf.on"`...; see `MainView.cpp`). Controls of unbuilt modules are **inert** (tooltips say which step brings them). Each step creates the parameters and brings its controls to life with `attachKnob` (prints the scale at the true values and turns on the value popup), `attachButton` and `attachSwitch`.
-- **`source/dsp/`:** `Biquad` (cookbook filters), `ChannelEq` (`EqBand`, `CutFilters`), `Compressor`, `Limiter`, `Gate`, `Saturation`.
+- **`source/dsp/`:** `Biquad` (cookbook filters), `ChannelEq` (`EqBand`, `CutFilters`), `Compressor`, `Limiter`, `Gate`, `Saturation`, `ConsoleColour` (THD and noise) and `ConsoleChannel` (the 72 channels' tolerances).
+  - The HPF / LPF and EQ run one instance per side (`processFilters`, `processEq`), as each side can be a different console channel.
   - Modules jump straight to their settings on the first block after `prepare`/`reset` (`fresh`), and glide or fade only for changes made while playing.
   - The processor runs the modules in stretches no longer than the prepared block size (`processModules`), as their working buffers are that size. The gate and compressor share one detector signal, `sidechain`: the audio at the gate's input, through the HPF / LPF when they're on SC, then the SC FILTER. LISTEN crossfades the strip's output to it.
 - **`PARAGON_SNAPSHOT_DEMO=1`** switches modules on for a render that shows them working (the expander, compressor, limiter and saturation so far).
@@ -70,13 +71,13 @@ The behaviour notes below are **modelled on** a classic 1970s/80s British consol
    - **HARMONICS** (the concept's TONE knob): 0% = a tanh biased by 0.5 (lopsided, valve-like, mostly 2nd), 100% = plain tanh (transistor-like, 3rd); a blend between. A 5 Hz DC blocker removes the lopsided curve's offset.
    - **VCA CLIP**: a hard-kneed clip at 0.8 (in the driven domain) before the curves, blended in over 30 ms. **MIX** 0–100%: a small knob under VCA CLIP (9 to 3 o'clock).
    - 4× oversampling (JUCE polyphase IIR, 2 stages); dry and wet are mixed at the high rate, so they line up. A few samples' delay while on (not reported to the host); while off, the audio is untouched but the filters keep running on a copy (`warmUp`), so switching on doesn't ring.
-8. **FILTERS / TONE**, the console colour module, which also holds the meter window:
-   - **THD:** harmonic saturation and density added to the EQ'd signal; OFF to 100.
-   - **V GAIN:** console noise floor (hiss/hum), off to audible. The concept scale reads -15 to +15 dB; *confirm with the owner*.
-   - **The channel knob with two LED number displays, LEFT and RIGHT** (e.g. 28 / 29). Each number picks one of **72 console channels**, each with slightly different component tolerances: tiny, repeatable differences in EQ frequencies and gains, filter corners, saturation and noise.
-     - In stereo, left and right are adjacent channels.
-     - **Channel 1 is the exact nominal design.**
-     - Seed the variation from the channel number so it's identical every time.
+8. **FILTERS / TONE**, the console colour module, which also holds the meter window. **(Built, step 6b; our design.)** The lamp (`toneOn`, on by default) switches THD, the noise and the channels' differences; off, both sides are channel 1.
+   - **THD** (`toneThd`, OFF to 100): x + a·x² + b·x³ at 2× oversampling (enough for a cubic: no aliasing), a 5 Hz DC blocker. At 100: a = 0.06, b = 0.04, so about 3% 2nd at full scale, 0.3% at the console's nominal −20 dBFS; it grows with level like a line amp. The amounts are our guess. While THD is 0 the audio is untouched (warm-up copy as in SATURATION).
+   - **V GAIN** (`toneVGain`, OFF to 100): the noise floor only. White hiss, independent per side, −64 dBFS RMS at 100; 50 Hz hum (plus 100 and 150 Hz) at −72 dBFS. Level ∝ V GAIN², so −76 at 50. Levels are our guess.
+   - **The channel knob** (`toneChannel`, 1–72, default 1) and the LEFT / RIGHT displays: the left side uses the chosen channel, the right the next (72 wraps to 1).
+     - **Channel 1 is the exact nominal design** (factors of exactly 1, so bit-exact with the colour off).
+     - Each channel's tolerances come from a hash of its number (`ConsoleChannel::number`), the same every time: EQ frequencies ±4% and gains ±4% (of the gain dialled in, so flat stays flat), HPF / LPF corners ±3%, THD's 2nd and 3rd ±25%, hiss ±1.5 dB, hum ±3 dB. The sizes are our guess; the SATURATION module and the dynamics don't vary.
+     - Step 7's STEREO MODE (DIGITAL: both sides the left channel; ONE / ALL) builds on `updateSides()` in the processor.
    - **The meter window:** IN/OUT peak meters, L and R, scale +24 to -60. An **IN / OUT** button chooses whether they show the input or output. Small **GR / COMP / LIMIT** gain-reduction meters run along the bottom, for L and R.
 9. **MONO MAKER / STEREO WIDTH.**
    - **MONO MAKER** (about 20–200 Hz) folds everything below the frequency to mono.
