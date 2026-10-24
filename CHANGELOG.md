@@ -2,7 +2,11 @@
 
 Each version's notes appear on its GitHub Release page.
 
-## Unreleased
+## 0.3.0
+
+**New: the dynamics.** The gate / expander, the SC FILTER, the compressor and the limiter all work now. Everything new is off by default, so a fresh PR7-C still leaves your audio untouched.
+
+**Still to come:** saturation, the console colour (THD, V GAIN, the channel numbers), the stereo tools (mono maker, width, stereo modes) and presets. Their controls are on the panel but don't do anything yet.
 
 - **The compressor works.**
   - THRESHOLD, and a RATIO from **SOFT** up to ∞. SOFT squeezes gently on quiet parts and firmer on peaks.
