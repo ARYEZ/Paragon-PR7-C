@@ -2,7 +2,11 @@
 
 Each version's notes appear on its GitHub Release page.
 
-## Unreleased
+## 0.4.0
+
+**New: every module works now, and presets.** The saturation, the console colour (THD, V GAIN and the 72 console channels), the stereo tools (mono maker, stereo width, stereo modes) and factory and user presets. Everything new is off by default, so a fresh PR7-C still leaves your audio untouched.
+
+**One change to songs saved with 0.3.0:** where the EQ or filters are in use, the right side now follows console channel 2, so it differs from the left by a fraction of a dB. Switch off the FILTERS / TONE lamp, or pick DIGITAL, to treat both sides identically again.
 
 - **The saturation works.** Our own design, after the idea of a harmonics generator:
   - **DRIVE** (0 to +24 dB) pushes the sound into the saturation. The level stays the same, so it changes the colour, not the loudness. At 0, normal levels are only lightly coloured.
