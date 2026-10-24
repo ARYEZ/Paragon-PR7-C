@@ -117,7 +117,7 @@ TEST_CASE ("Every module has its on lamp", "[ui]")
     }
 }
 
-TEST_CASE ("INPUT, Ø, MUTE, OUTPUT TRIM and the fader work the parameters", "[ui]")
+TEST_CASE ("INPUT, phase invert, MUTE, OUTPUT TRIM and the fader work the parameters", "[ui]")
 {
     ParagonPR7CAudioProcessor processor;
     std::unique_ptr<juce::AudioProcessorEditor> editor (processor.createEditor());

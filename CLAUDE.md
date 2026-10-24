@@ -159,7 +159,7 @@ The owner's manual for the reference is **not** in this repo: it's someone else'
 ## Build, test, check
 
 - **Build:** `cmake -B build && cmake --build build -j8`. JUCE 9.0.4 and Catch2 are fetched by CMake.
-- **Tests:** `xvfb-run -a build/tests/ParagonPR7CTests`. All must pass. New DSP gets tests that measure what it does to the sound: frequency responses, gain reduction at known levels, harmonics, stereo image (mid/side levels), and that defaults pass audio through untouched.
+- **Tests:** `xvfb-run -a build/tests/ParagonPR7CTests`. All must pass. **Test names must be plain ASCII** (no Ø, ∞, ±): CTest passes each name to the test binary on the command line, Windows mangles anything else, and the test then "matches nothing" and fails on CI. New DSP gets tests that measure what it does to the sound: frequency responses, gain reduction at known levels, harmonics, stereo image (mid/side levels), and that defaults pass audio through untouched.
 - **pluginval:** `xvfb-run -a <pluginval> --strictness-level 10 --validate-in-process --validate "build/ParagonPR7C_artefacts/Release/VST3/Paragon PR7-C.vst3"`. Check the **exit code**, not just "SUCCESS". CI uses the official pluginval v1.0.4 release.
 - **Renders:** `PARAGON_SNAPSHOT=out.png xvfb-run -a build/tests/ParagonPR7CTests "[snapshot]"`.
   - `PARAGON_SNAPSHOT_WIDTH=2896` gives a 2× render. `PARAGON_SNAPSHOT_FINISH=black|neon` picks the finish.

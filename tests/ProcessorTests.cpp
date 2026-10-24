@@ -178,7 +178,7 @@ TEST_CASE ("The fader's travel follows its printed scale", "[processor]")
     CHECK_THAT (fader->convertTo0to1 (-20.0f), WithinAbs (Parameters::faderProportion (-20.0f), 1.0e-6));
 }
 
-TEST_CASE ("Ø flips the polarity of both channels", "[processor]")
+TEST_CASE ("Phase invert flips the polarity of both channels", "[processor]")
 {
     ParagonPR7CAudioProcessor processor;
     processor.prepareToPlay (sampleRate, blockSize);
@@ -194,7 +194,7 @@ TEST_CASE ("Ø flips the polarity of both channels", "[processor]")
             REQUIRE_THAT (output.getSample (channel, i), WithinAbs (-input.getSample (channel, i), 1.0e-6));
 }
 
-TEST_CASE ("Flipping Ø or MUTE mid-signal glides instead of clicking", "[processor]")
+TEST_CASE ("Flipping phase invert or MUTE mid-signal glides instead of clicking", "[processor]")
 {
     for (const auto* id : { ParamIDs::phaseInvert, ParamIDs::mute })
     {
