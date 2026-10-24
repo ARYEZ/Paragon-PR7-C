@@ -2,16 +2,9 @@
 
 Each version's notes appear on its GitHub Release page.
 
-## Unreleased
-
-- **Cleaner FET compression.** The FET character's grit is now worked out at twice the sample rate, so pushing it hard on bright sounds no longer adds faint, out-of-tune tones (aliasing). The grit itself sounds the same; VCA and OPTO are untouched.
-- The gate's FAST / MED / SLOW keys no longer have tooltips saying they don't work yet. They always worked.
-
 ## 0.4.0
 
 **New: every module works now, and presets.** The saturation, the console colour (THD, V GAIN and the 72 console channels), the stereo tools (mono maker, stereo width, stereo modes) and factory and user presets. Everything new is off by default, so a fresh PR7-C still leaves your audio untouched.
-
-**One change to songs saved with 0.3.0:** where the EQ or filters are in use, the right side now follows console channel 2, so it differs from the left by a fraction of a dB. Switch off the FILTERS / TONE lamp, or pick DIGITAL, to treat both sides identically again.
 
 - **The saturation works.** Our own design, after the idea of a harmonics generator:
   - **DRIVE** (0 to +24 dB) pushes the sound into the saturation. The level stays the same, so it changes the colour, not the loudness. At 0, normal levels are only lightly coloured.
@@ -24,7 +17,6 @@ Each version's notes appear on its GitHub Release page.
   - **V GAIN** adds the console's noise floor: hiss (different on each side) and a little mains hum. Off by default.
   - **The channel knob** picks one of **72 console channels**, each with its own tiny, fixed differences in the EQ, filters, THD and noise. LEFT shows the left side's channel; the right side uses the next one, so left and right are never quite identical, like a real stereo pair on a console. **Channel 1 is the exact design.** Defaults: 1 / 2.
   - The FILTERS / TONE lamp switches all of it off: both sides are then the exact design.
-  - In songs saved with earlier versions, the EQ and filters on the right side now follow channel 2, so they differ from the left by a fraction of a dB. Switch the FILTERS / TONE lamp off to get the old, identical sides back.
 - **The stereo tools work.** Our own design:
   - **MONO MAKER** (20 to 500 Hz) folds everything below its frequency to mono, for a solid centre and tight low end. Above the frequency, the stereo image is exactly as it was.
   - **STEREO WIDTH** (0 to 200%): 0 is mono, 100 as it was, 200 twice as wide. The centre is never touched, so it always sums to mono the same.
@@ -37,6 +29,9 @@ Each version's notes appear on its GitHub Release page.
   - A **\*** after the name means you've changed something since loading it.
   - The **…** menu: back to the default settings, delete one of your presets, or open the presets folder.
   - Loading a preset leaves the fader, the console channel, LISTEN and MUTE as they are, as they belong to the track rather than the sound.
+- **Cleaner FET compression.** The FET character's grit is now worked out at twice the sample rate, so pushing it hard on bright sounds no longer adds faint, out-of-tune tones (aliasing). The grit itself sounds the same; VCA and OPTO are untouched.
+- The gate's FAST / MED / SLOW keys no longer have tooltips saying they don't work yet. They always worked.
+- On Macs, every knob's 0 is now exactly 0. A rounding difference on Apple processors left the EQ gains a hair off 0 dB (far too little to hear), which kept all five bands running at their defaults.
 
 ## 0.3.0
 

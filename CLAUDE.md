@@ -158,6 +158,9 @@ The owner's manual for the reference is **not** in this repo: it's someone else'
 - **Parameters:**
   - IDs live in `source/Parameters.h` and are saved in projects: never rename a shipped one.
   - Choices are saved by **index**: only append.
+  - Stepped ranges use `steppedRange` (snaps to whole steps counted from 0), never `NormalisableRange (min, max, step)`: JUCE counts its steps from the minimum, and a fused multiply-add (Apple silicon) lands a hair off, so 0 dB wasn't 0 and the EQ bands never switched off on Macs.
+  - The Linux build here can't show Apple-silicon rounding. To check exact (bit-for-bit) tests the way macOS runs them, build the tests separately with `-DCMAKE_CXX_FLAGS="-march=haswell -ffp-contract=fast"`, in a separate build folder and `FETCHCONTENT_BASE_DIR` (sharing `build/_deps` breaks the main build).
+- **CI:** after every push, check that the run went green on all three systems (GitHub MCP `actions_list`). A red macOS or Windows run blocks the release, and nothing else says so.
   - Each new parameter gets the next version hint.
 
 ## Releases
