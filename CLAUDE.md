@@ -14,10 +14,10 @@ Unlike PR7-B and PR7-V, it is **not** a copy of PR7-G. It was seeded lean: PR7-G
 
 - **The plugin:** true stereo (stereo in/out, or mono in/out on a mono track).
   - Its own identity: `Paragon PR7-C`, plugin code `Pr7c`, bundle `com.paragon.paragonpr7c`, maker code `Prgn`.
-  - Parameters: `inputGain`, `outputTrim`, `outputLevel` (the fader), `phaseInvert`, `mute`; the HPF / LPF (`hpfOn`, `hpfFreq`, `lpfOn`, `lpfFreq`, `filterPlacement`); the EQ (`<band>On/Freq/Gain` plus `<band>Q` or `<band>Shelf`, bands from `ParamRanges::eqBands`); the gate (`gate*`), SC FILTER (`sc*`), compressor (`comp*`), limiter (`limit*`), saturation (`sat*`), the console colour (`toneOn`, `toneThd`, `toneVGain`, `toneChannel`), the stereo tools (`monoOn`, `monoFreq`, `widthOn`, `width`, `stereoMode`) and `dynamicsLink`. Input and output peak meters (console-calibrated, with OVL), and gain-reduction sources (`getGainReduction`) for the GR meters, which stay at 0 until the dynamics exist.
+  - Parameters: `inputGain`, `outputTrim`, `outputLevel` (the fader), `phaseInvert`, `mute`; the HPF / LPF (`hpfOn`, `hpfFreq`, `lpfOn`, `lpfFreq`, `filterPlacement`); the EQ (`<band>On/Freq/Gain` plus `<band>Q` or `<band>Shelf`, bands from `ParamRanges::eqBands`); the gate (`gate*`), SC FILTER (`sc*`), compressor (`comp*`), limiter (`limit*`), saturation (`sat*`), the console colour (`toneOn`, `toneThd`, `toneVGain`, `toneChannel`), the stereo tools (`monoOn`, `monoFreq`, `widthOn`, `width`, `stereoMode`) and `dynamicsLink`. Input and output peak meters (console-calibrated, with OVL), and gain-reduction sources (`getGainReduction`) for the GR meters (gate, COMP, LIMIT, per side).
 - **`source/ui/MainView`:** a fixed **1448 × 1086** canvas, exactly the concept image's size, so coordinates can be read straight off `docs/concept.png`. The editor scales it to the window.
-  - **Step 1 is done:** every module's panel is drawn with all its controls, placed as on the concept. `MainView::modules()` holds each module's rectangle.
-  - Controls are registered by ID (`"comp.ratio"`, `"hf.on"`...; see `MainView.cpp`). Controls of unbuilt modules are **inert** (tooltips say which step brings them). Each step creates the parameters and brings its controls to life with `attachKnob` (prints the scale at the true values and turns on the value popup), `attachButton` and `attachSwitch`.
+  - Every module's panel is drawn with all its controls, placed as on the concept, and **every control works** (a UI test checks each has a real tooltip). `MainView::modules()` holds each module's rectangle.
+  - Controls are registered by ID (`"comp.ratio"`, `"hf.on"`...; see `MainView.cpp`), then attached to parameters with `attachKnob` (prints the scale at the true values and turns on the value popup), `attachButton`, `attachSwitch` and `attachChoice`. A new control needs its own tooltip.
 - **`source/dsp/`:** `Biquad` (cookbook filters), `ChannelEq` (`EqBand`, `CutFilters`), `Compressor`, `Limiter`, `Gate`, `Saturation`, `ConsoleColour` (THD and noise), `ConsoleChannel` (the 72 channels' tolerances) and `StereoTools` (mono maker, width).
   - `source/ChannelRegistry`: every PR7-C in the process, for RANDOM CH. (message thread only).
 - **`source/PresetManager`:** factory presets (in code, each listing only what differs from the defaults) and user presets (XML `.pr7cpreset` files in Documents/Paragon PR7-C/Presets). The processor owns one (`getPresets()`); the current name lives in the state (`presetName`).
@@ -29,7 +29,7 @@ Unlike PR7-B and PR7-V, it is **not** a copy of PR7-G. It was seeded lean: PR7-G
 - **Carried over from PR7-G:**
   - `ParagonLookAndFeel` (Inter fonts, knobs, LED/neon bars, piano keys, chrome bezels).
   - `Finish` (Pearl White / White + Neon / Pearl Black finishes and the satin grain). Its settings file is "Paragon PR7-C".
-  - `LedDisplay` (the orange LED screen; its static `paintScreen` / `paintGlassOverlay` suit the channel-number displays and the meter window). **Its rig/tuner contents are PR7-G's.** Trim them when you build those displays.
+  - `LedDisplay`: static drawing functions only (`paintScreen`, `paintGlassOverlay`, `drawDigit`), for the channel-number displays. PR7-G's rig/tuner screen was removed.
   - `Logo` (the PR7 mark, now "-C").
   - `LevelMeter` / `LevelMeterSource`.
   - `dsp/EffectUtils.h` (`BypassFade` etc.).
@@ -39,13 +39,13 @@ Unlike PR7-B and PR7-V, it is **not** a copy of PR7-G. It was seeded lean: PR7-G
 
 The **order is fixed**: the owner decided the user can't reorder modules. The signal flows:
 
-**input → HPF/LPF → GATE/EXP → COMP → EQ (HF, HMF, MF, LMF) → LIMIT → SATURATION → FILTERS/TONE colour → MONO MAKER / STEREO WIDTH → OUTPUT**
+**input → HPF/LPF → GATE/EXP → COMP → EQ (HF, HMF, MF, LMF, LF) → LIMIT → SATURATION → FILTERS/TONE colour → MONO MAKER / STEREO WIDTH → OUTPUT**
 
 The **SC FILTER** shapes only the dynamics' **sidechain** (detector), never the audio. Every module has an **on LED** in its header.
 
 The behaviour notes below are **modelled on** a classic 1970s/80s British console channel and mastering compressor (the owner supplied a commercial plugin manual as reference). They're described in our own words. **Never use that product's names or trademarks** (see "Names" below).
 
-1. **HPF / LPF. (Built, step 2.)** HPF 20 Hz–2 kHz, LPF 1–20 kHz, 12 dB/octave Butterworth, both off by default. Each fades in/out over 20 ms (on/off and placement changes). In SC they leave the audio alone; the dynamics steps must feed them into the detector (`filterSettings` in the processor).
+1. **HPF / LPF. (Built, step 2.)** HPF 20 Hz–2 kHz, LPF 1–20 kHz, 12 dB/octave Butterworth, both off by default. Each fades in/out over 20 ms (on/off and placement changes). In SC they leave the audio alone and filter the dynamics' detector instead (`filterSettings` in the processor). Each side runs its own filters, with its console channel's corners.
    - A three-way switch **IN / POST / SC** places them:
      - **IN:** at the input, before everything.
      - **POST:** after the compressor, before the limiter.
@@ -57,7 +57,7 @@ The behaviour notes below are **modelled on** a classic 1970s/80s British consol
 3. **SC FILTER. (Built, step 5.)** Off by default. HPF 20–200 Hz (default 60) and LPF 1–20 kHz on the shared detector signal (gate **and** compressor), never the audio. **HIGH Q**: resonance Q 2.5 instead of 0.707. **LISTEN**: the output becomes the detector signal (20 ms crossfade).
 4. **COMP. (Built, step 3; all of it our design.)** Off by default. THRESHOLD -50 to 0 dBFS; RATIO SOFT, 1.5:1 to ∞ (marks evenly round the knob, `compRatioMarks`); ATTACK 0.1–30 ms; RELEASE 50 ms–3 s; AUTO; MAKE UP 0–20 dB; LINK (`dynamicsLink`, on by default) uses the louder channel's level for both.
    - **SOFT:** the output over the threshold is 4·over/(4+over): about 3:1 at 8 dB over, 6:1 at 20, 10:1 at 36, a smooth knee built in.
-   - **VCA:** RMS detector (5 ms), 1 dB knee. **OPTO:** RMS (20 ms), 12 dB knee, attack ×2, stretching release. **FET:** peak detector, 3 dB knee, third-harmonic grit ∝ gain reduction (about 1% at 20 dB), measured against the signal's own peak so it doesn't depend on level. The grit is a gentle cubic and isn't oversampled (aliasing tiny); revisit with the SATURATION step. RMS readings get +3 dB, so a sine's threshold is the same in every character.
+   - **VCA:** RMS detector (5 ms), 1 dB knee. **OPTO:** RMS (20 ms), 12 dB knee, attack ×2, stretching release. **FET:** peak detector, 3 dB knee, third-harmonic grit ∝ gain reduction (about 1% at 20 dB), measured against the signal's own peak so it doesn't depend on level. The grit (a gentle cubic) is computed at 2× the rate on a copy of the compressed signal and only the grit is added back (`addGrit`), so VCA / OPTO are untouched and switching character shifts nothing; the grit lags a few samples, inaudible at 1%. A 9 kHz tone's folded 3rd harmonic is about −86 dB (−40 before). RMS readings get +3 dB, so a sine's threshold is the same in every character.
    - **Release stretch** (OPTO always, VCA/FET with AUTO): 0.35× after a short peak up to 3× after long compression (a 1.5 s memory of the reduction).
    - Meters: the meter window's COMP pair per channel; COMP's own gain-change meter (its own source: each reading empties a source) shows reduction left, make-up right.
 5. **EQ: five bands. (Built, step 2.)** Each band has an on LED, frequency (even travel per octave), **GAIN ±15 dB**.
@@ -80,18 +80,16 @@ The behaviour notes below are **modelled on** a classic 1970s/80s British consol
      - **Channel 1 is the exact nominal design** (factors of exactly 1, so bit-exact with the colour off).
      - Each channel's tolerances come from a hash of its number (`ConsoleChannel::number`), the same every time: EQ frequencies ±4% and gains ±4% (of the gain dialled in, so flat stays flat), HPF / LPF corners ±3%, THD's 2nd and 3rd ±25%, hiss ±1.5 dB, hum ±3 dB. The sizes are our guess; the SATURATION module and the dynamics don't vary.
      - The STEREO MODE picks the right side's channel in `updateSides()`.
-   - **The meter window:** IN/OUT peak meters, L and R, scale +24 to -60. An **IN / OUT** button chooses whether they show the input or output. Small **GR / COMP / LIMIT** gain-reduction meters run along the bottom, for L and R.
+   - **The meter window:** IN/OUT peak meters, L and R, scale +24 to -60. IN and OUT side by side (owner decision), with OVL and the peak-reset button. Small **GR / COMP / LIMIT** gain-reduction meters run along the bottom, for L and R.
 9. **MONO MAKER / STEREO WIDTH. (Built, step 7; our design.)** Both off by default, each with its on LED and a 20 ms fade; nothing happens on a mono track. Mono maker first, then width.
    - **MONO MAKER** 20–500 Hz (default 100): the side goes through a Linkwitz-Riley 24 dB/oct high-pass (two Butterworth sections); the mid through the same crossover's low + high halves summed (an allpass), so mid and side keep the same phase and the image above the frequency is exact. Coefficients every 8 samples while the frequency glides (every 32 clicked slightly).
    - **STEREO WIDTH** 0–200% (default 100): side × width; the mid (and so the mono sum) is never touched.
-10. **OUTPUT.**
-    - **OUTPUT LEVEL** knob (-24 to +12 dB).
-    - **Ø** (phase invert) and **MUTE**.
+10. **IN / OUT. (Built, step 1.)** **INPUT** (−24 to +12 dB, before everything), **Ø** (phase invert) and **MUTE**.
 11. **STEREO MODE. (Built, step 7.)** `stereoMode`: **ANALOG** (default; the right side uses the next channel) or **DIGITAL** (both use the left channel; the RIGHT display shows the same number).
     - **RANDOM CH.** (momentary keys, `ChannelRegistry`): **ONE** moves this instance to a random channel that no other PR7-C in the process uses (ANALOG takes its channel and the next; DIGITAL only its own), never its current one. **ALL** re-rolls every instance in turn, each avoiding those given out before it. With nothing free (over 36 ANALOG instances), any other channel. The new channel is set as a parameter change (the host records it).
     - A host that runs each plugin in its own process can't share the registry.
     - The IN / OUT lamp (`output.on`) is lit and does nothing: the output stage is always on.
-12. **OUTPUT TRIM** knob (±12 dB) and the **output fader** (+10 to -60 dB). *See open questions.*
+12. **OUTPUT TRIM** knob (±12 dB) and the **output fader** (+10 dB down to silence at the very bottom; `outputLevel`). (Built, step 1.)
 13. **Header. (Built, step 8.)**
     - The preset name (click it for the list: Factory, then "Yours" A to Z) with ◀ ▶ (step through, wrapping). " *" after the name = changed since loaded (compared against what the preset set, in the editor's timer).
     - **SAVE** asks for a name (a user preset; asks before replacing one; factory names refused). The **"…"** menu: back to the defaults, delete the current user preset, show the presets folder.
@@ -101,13 +99,13 @@ The behaviour notes below are **modelled on** a classic 1970s/80s British consol
 
 ## Build order (agreed with the owner)
 
-One module at a time. Each step is built, tested and **rendered**, and the owner sees the render before you move on.
+One module at a time. Each step is built, tested and **rendered**, and the owner sees the render before you move on. **All eight steps are done (0.4.0).** Further work comes from the owner's listening tests in BeatMaker.
 
 1. **The panel layout and meters:**
    - The concept's look: brushed light panels with screws, black knobs with glowing orange rings, LED buttons, the header and footer.
-   - Every module's panel drawn, with its controls (inert until its DSP exists).
+   - Every module's panel drawn, with its controls.
    - Working meters.
-2. **EQ (the four bands) and the HPF/LPF filters.**
+2. **EQ (five bands, as decided) and the HPF/LPF filters.**
 3. **Compressor.**
 4. **Limiter.**
 5. **Gate / expander** (and SC FILTER).
@@ -133,7 +131,7 @@ Settled with the owner during step 1 (after reading a research summary of the re
 - **No backward compatibility needed yet** (said at 0.4.0): the owner has no songs or presets saved with any version so far. Don't spend effort keeping older saved projects sounding the same. Still keep parameter IDs stable from here on, as songs saved with 0.4.0 onward will depend on them.
 - **Sidechain:** internal only, no external key.
 - **Presets:** factory presets and user presets (SAVE). No A/B, no copy/paste.
-- **Knobs:** every working knob and the fader show their value while turned; Shift-drag for fine control. Enable the value popup (`setPopupDisplayEnabled`) on each knob as its step attaches it.
+- **Knobs:** every working knob and the fader show their value while turned; Shift-drag for fine control. `attachKnob` turns on the value popup (`setPopupDisplayEnabled`); do the same for any knob attached another way.
 
 From the reference research, for reference when building the DSP (treat ranges as approximate): the compressor detector is RMS, the limiter peak-detected (no look-ahead documented); the gate's release is exponential by default (LINEAR switches it); channel 1 is the nominal design.
 

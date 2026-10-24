@@ -11,11 +11,9 @@
 // straight off it. The editor scales the whole view to the window.
 //
 // Every module's panel is drawn with all its controls, placed as on the
-// concept. Most are inert until their module's DSP is built (see CLAUDE.md
-// for the order): each step attaches its controls to parameters, found by
-// their IDs here. Working now: HPF / LPF, the EQ, the dynamics, the
-// saturation, console colour and stereo tools, INPUT, Ø, MUTE, OUTPUT
-// TRIM, the fader, the meters, and the finish (from the settings gear).
+// concept, and every control works: each is created here, then attached to
+// its parameter (found by the IDs here), and the header runs the presets
+// and the finish (from the settings gear).
 class MainView final : public juce::Component,
                        private juce::ChangeListener,
                        private juce::Timer

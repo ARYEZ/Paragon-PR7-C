@@ -2,6 +2,11 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## Unreleased
+
+- **Cleaner FET compression.** The FET character's grit is now worked out at twice the sample rate, so pushing it hard on bright sounds no longer adds faint, out-of-tune tones (aliasing). The grit itself sounds the same; VCA and OPTO are untouched.
+- The gate's FAST / MED / SLOW keys no longer have tooltips saying they don't work yet. They always worked.
+
 ## 0.4.0
 
 **New: every module works now, and presets.** The saturation, the console colour (THD, V GAIN and the 72 console channels), the stereo tools (mono maker, stereo width, stereo modes) and factory and user presets. Everything new is off by default, so a fresh PR7-C still leaves your audio untouched.

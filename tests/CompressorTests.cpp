@@ -204,6 +204,18 @@ TEST_CASE ("Compressor: FET adds harmonics when it works hard; VCA stays clean",
     CHECK (thirdHarmonicDb (0) < thirdHarmonicDb (2) - 20.0f);
 }
 
+TEST_CASE ("Compressor: FET's grit doesn't fold back down (aliasing)", "[comp]")
+{
+    // 9 kHz, squeezed hard: its 3rd harmonic is at 27 kHz, beyond what
+    // 48 kHz can hold. Unfiltered it would fold back to 21 kHz.
+    auto comp = makeCompressor (-40.0f, 10.0f);
+    set (*comp, ParamIDs::compCharacter, 2.0f);   // FET
+    auto buffer = sine (9000.0f, -3.0f, 48000);
+    process (*comp, buffer);
+    const auto fundamental = levelAt (buffer, 9000.0f, 24000, 24000);
+    CHECK (juce::Decibels::gainToDecibels (levelAt (buffer, 21000.0f, 24000, 24000) / fundamental) < -80.0f);
+}
+
 TEST_CASE ("Compressor: LINK turns both sides down together", "[comp]")
 {
     // A loud left, a quiet right (below the threshold on its own).

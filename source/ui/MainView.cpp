@@ -19,18 +19,6 @@ namespace
     // Modules whose plates have no lamp and title along the top.
     bool hasHeader (const juce::String& name) { return name != "STEREO MODE" && name != "OUTPUT TRIM"; }
 
-    // Tooltips for controls that don't work yet.
-    juce::String later (const juce::String& what, const char* step)
-    {
-        return what + "\n(Not working yet: it arrives with " + step + ".)";
-    }
-    constexpr auto eqStep = "the EQ and filters";
-    constexpr auto compStep = "the compressor";
-    constexpr auto limitStep = "the limiter";
-    constexpr auto gateStep = "the gate";
-    constexpr auto colourStep = "saturation and the console colour";
-    constexpr auto stereoStep = "the stereo features";
-
     void drawStamped (juce::Graphics& g, const juce::String& text, juce::Rectangle<float> area, float size,
                       juce::Justification justification = juce::Justification::centred)
     {
@@ -151,67 +139,67 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
     using R = juce::Rectangle<int>;
 
     // HPF / LPF.
-    addLed ("hpf.on", { 58, 105 }, later ("HPF on/off", eqStep));
-    addLed ("lpf.on", { 287, 105 }, later ("LPF on/off", eqStep));
-    addKnob ("hpf.freq", P (111, 187), 37, { "40", "80", "160", "320", "640", "1.2k" }, "Hz", {}, 0.0, later ("HPF frequency", eqStep));
-    addKnob ("lpf.freq", P (243, 187), 37, { "3k", "6k", "10k", "14k", "20k", "30k" }, "Hz", {}, 1.0, later ("LPF frequency", eqStep));
+    addLed ("hpf.on", { 58, 105 }, "HPF on/off");
+    addLed ("lpf.on", { 287, 105 }, "LPF on/off");
+    addKnob ("hpf.freq", P (111, 187), 37, { "40", "80", "160", "320", "640", "1.2k" }, "Hz", {}, 0.0, "HPF frequency");
+    addKnob ("lpf.freq", P (243, 187), 37, { "3k", "6k", "10k", "14k", "20k", "30k" }, "Hz", {}, 1.0, "LPF frequency");
     addSwitch ("filters.placement", R (166, 236, 22, 54), 3, 0, false,
-               later ("Where the filters sit: IN (at the input), POST (after the compressor) or SC (in the dynamics' sidechain only)", eqStep));
+               "Where the filters sit: IN (at the input), POST (after the compressor) or SC (in the dynamics' sidechain only)");
 
     // GATE / EXP.
-    addLed ("gate.on", { 58, 324 }, later ("Gate on/off", gateStep));
-    addKnob ("gate.threshold", P (111, 400), 37, { "-60", "-40", "-20", "0" }, {}, "THRESHOLD", 0.0, later ("Gate threshold", gateStep));
-    addKnob ("gate.range", P (243, 400), 37, { "0", "10", "20", "30", "40" }, {}, "RANGE", 0.0, later ("Range: the most the gate turns down. 0 is off", gateStep));
-    addButton ("gate.minus30", "-30", R (70, 466, 85, 36), true, later ("-30: shifts the threshold range down 30 dB, for quiet material", gateStep));
-    addButton ("gate.exp", "EXP", R (171, 466, 84, 36), true, later ("EXP: an expander instead of a gate", gateStep));
-    addKnob ("gate.hold", P (94, 570), 31, { "0", "50", "500" }, {}, "HOLD", 0.3, later ("Hold: how long (ms) the gate stays open before it starts to close", gateStep));
-    addKnob ("gate.release", P (199, 570), 31, { "0.5", "1", "2" }, {}, "RELEASE", 0.5, later ("Gate release", gateStep));
-    addButton ("gate.fast", "FAST", R (250, 518, 60, 31), true, later ("Gate attack: FAST, for drums", gateStep));
-    addButton ("gate.med", "MED", R (250, 554, 60, 31), true, later ("Gate attack: MED", gateStep));
-    addButton ("gate.slow", "SLOW", R (250, 590, 60, 31), true, later ("Gate attack: SLOW, for smooth fades", gateStep));
+    addLed ("gate.on", { 58, 324 }, "Gate on/off");
+    addKnob ("gate.threshold", P (111, 400), 37, { "-60", "-40", "-20", "0" }, {}, "THRESHOLD", 0.0, "Gate threshold");
+    addKnob ("gate.range", P (243, 400), 37, { "0", "10", "20", "30", "40" }, {}, "RANGE", 0.0, "Range: the most the gate turns down. 0 is off");
+    addButton ("gate.minus30", "-30", R (70, 466, 85, 36), true, "-30: shifts the threshold range down 30 dB, for quiet material");
+    addButton ("gate.exp", "EXP", R (171, 466, 84, 36), true, "EXP: an expander instead of a gate");
+    addKnob ("gate.hold", P (94, 570), 31, { "0", "50", "500" }, {}, "HOLD", 0.3, "Hold: how long (ms) the gate stays open before it starts to close");
+    addKnob ("gate.release", P (199, 570), 31, { "0.5", "1", "2" }, {}, "RELEASE", 0.5, "Gate release");
+    addButton ("gate.fast", "FAST", R (250, 518, 60, 31), true, "Gate attack: FAST, for drums");
+    addButton ("gate.med", "MED", R (250, 554, 60, 31), true, "Gate attack: MED");
+    addButton ("gate.slow", "SLOW", R (250, 590, 60, 31), true, "Gate attack: SLOW, for smooth fades");
     addRadioGroup ({ "gate.fast", "gate.med", "gate.slow" }, 1, "gate.med");
-    addKnob ("gate.ratio", P (116, 690), 35, { "1:1", "1.5:1", "3:1", "6:1", "20:1" }, {}, "RATIO", 0.5, later ("Expander ratio", gateStep));
-    addSwitch ("gate.linear", R (251, 658, 21, 50), 2, 1, true, later ("LINEAR: a linear release instead of the usual exponential one", gateStep));
+    addKnob ("gate.ratio", P (116, 690), 35, { "1:1", "1.5:1", "3:1", "6:1", "20:1" }, {}, "RATIO", 0.5, "Expander ratio");
+    addSwitch ("gate.linear", R (251, 658, 21, 50), 2, 1, true, "LINEAR: a linear release instead of the usual exponential one");
 
     // SC FILTER.
-    addLed ("sc.on", { 58, 777 }, later ("Sidechain filter on/off", gateStep));
-    addKnob ("sc.hpf", P (104, 847), 33, { "20", "60", "200" }, {}, "HPF", 0.0, later ("Sidechain high-pass: the gate and compressor ignore lows below it", gateStep));
-    addKnob ("sc.lpf", P (248, 847), 33, { "1k", "4.5k", "20k" }, {}, "LPF", 1.0, later ("Sidechain low-pass: the gate and compressor ignore highs above it", gateStep));
-    addButton ("sc.listen", {}, R (87, 923, 32, 38), true, later ("LISTEN: hear the sidechain signal", gateStep))
+    addLed ("sc.on", { 58, 777 }, "Sidechain filter on/off");
+    addKnob ("sc.hpf", P (104, 847), 33, { "20", "60", "200" }, {}, "HPF", 0.0, "Sidechain high-pass: the gate and compressor ignore lows below it");
+    addKnob ("sc.lpf", P (248, 847), 33, { "1k", "4.5k", "20k" }, {}, "LPF", 1.0, "Sidechain low-pass: the gate and compressor ignore highs above it");
+    addButton ("sc.listen", {}, R (87, 923, 32, 38), true, "LISTEN: hear the sidechain signal")
         .getProperties().set (ParagonLookAndFeel::ledProperty, true);
-    addButton ("sc.highQ", {}, R (196, 923, 32, 38), true, later ("HIGH Q: resonant sidechain filters", gateStep))
+    addButton ("sc.highQ", {}, R (196, 923, 32, 38), true, "HIGH Q: resonant sidechain filters")
         .getProperties().set (ParagonLookAndFeel::ledProperty, true);
 
     // COMP.
-    addLed ("comp.on", { 373, 104 }, later ("Compressor on/off", compStep));
-    addKnob ("comp.threshold", P (409, 185), 37, { "-40", "-30", "-20", "-10", "0" }, {}, "THRESHOLD", 1.0, later ("Compressor threshold", compStep));
+    addLed ("comp.on", { 373, 104 }, "Compressor on/off");
+    addKnob ("comp.threshold", P (409, 185), 37, { "-40", "-30", "-20", "-10", "0" }, {}, "THRESHOLD", 1.0, "Compressor threshold");
     auto& ratio = addKnob ("comp.ratio", P (556, 185), 37, {}, {}, "RATIO", 0.4,
-                           later ("Compressor ratio. At SOFT, the ratio rises gently with the level: light on quiet parts, firmer on peaks", compStep));
+                           "Compressor ratio. At SOFT, the ratio rises gently with the level: light on quiet parts, firmer on peaks");
     ratio.setScale ({ { 0.0f, "SOFT" }, { 0.2f, "1.5" }, { 0.4f, "2" }, { 0.6f, "4" }, { 0.8f, "10" }, { 1.0f, juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x9e")) } });
     addButton ("comp.vca", "VCA", R (368, 268, 78, 30), true, "VCA: clean and precise. Follows the loudness, with a near-hard knee");
     addButton ("comp.opto", "OPTO", R (448, 268, 78, 30), true, "OPTO: smooth. A wide soft knee, a gentler attack, and a release that stretches the longer it works");
     addButton ("comp.fet", "FET", R (528, 268, 78, 30), true, "FET: fast and aggressive. Catches every transient, and adds a little grit the harder it works");
     addRadioGroup ({ "comp.vca", "comp.opto", "comp.fet" }, 2, "comp.vca");
-    addKnob ("comp.attack", P (395, 372), 26, { "0.1", "1", "30" }, {}, "ATTACK", 0.5, later ("Compressor attack (ms)", compStep));
-    addKnob ("comp.release", P (485, 372), 26, { "0.1", "1", "3" }, {}, "RELEASE", 0.5, later ("Compressor release (s)", compStep));
-    addLed ("comp.auto", { 474, 326 }, later ("AUTO: programme-dependent release", compStep)).setToggleState (false, juce::dontSendNotification);
-    addKnob ("comp.makeup", P (575, 372), 26, { "0", "10", "20" }, {}, "MAKE UP", 0.0, later ("Make-up gain (dB): brings the level back up after compressing", compStep));
+    addKnob ("comp.attack", P (395, 372), 26, { "0.1", "1", "30" }, {}, "ATTACK", 0.5, "Compressor attack (ms)");
+    addKnob ("comp.release", P (485, 372), 26, { "0.1", "1", "3" }, {}, "RELEASE", 0.5, "Compressor release (s)");
+    addLed ("comp.auto", { 474, 326 }, "AUTO: programme-dependent release").setToggleState (false, juce::dontSendNotification);
+    addKnob ("comp.makeup", P (575, 372), 26, { "0", "10", "20" }, {}, "MAKE UP", 0.0, "Make-up gain (dB): brings the level back up after compressing");
 
     // LIMIT.
-    addLed ("limit.on", { 375, 538 }, later ("Limiter on/off", limitStep));
-    addKnob ("limit.threshold", P (414, 614), 35, { "-20", "-15", "-10", "-5", "0" }, {}, "THRESHOLD", 1.0, later ("Limiter threshold", limitStep));
-    addKnob ("limit.makeup", P (551, 614), 35, { "0", "3", "6", "9", "12" }, {}, "MAKE UP", 0.0, later ("Make-up gain", limitStep));
+    addLed ("limit.on", { 375, 538 }, "Limiter on/off");
+    addKnob ("limit.threshold", P (414, 614), 35, { "-20", "-15", "-10", "-5", "0" }, {}, "THRESHOLD", 1.0, "Limiter threshold");
+    addKnob ("limit.makeup", P (551, 614), 35, { "0", "3", "6", "9", "12" }, {}, "MAKE UP", 0.0, "Make-up gain");
     addButton ("limit.brick", "BRICK", R (365, 690, 78, 32), true, "BRICK: a hard ceiling. Nothing gets past the threshold.");
     addButton ("limit.soft", "SOFT", R (446, 690, 78, 32), true, "SOFT: eases in from 3 dB below the threshold and lets go more gently. Still a ceiling: nothing gets past it.");
     addButton ("limit.auto", "AUTO", R (527, 690, 78, 32), true, "AUTO: BRICK's ceiling, letting go quickly after short peaks and slowly under steady limiting");
     addRadioGroup ({ "limit.brick", "limit.soft", "limit.auto" }, 3, "limit.brick");
-    addKnob ("limit.mix", P (426, 775), 27, { "0", "50", "100" }, {}, "MIX %", 1.0, later ("Mix: how much of the limited signal you hear", limitStep));
+    addKnob ("limit.mix", P (426, 775), 27, { "0", "50", "100" }, {}, "MIX %", 1.0, "Mix: how much of the limited signal you hear");
     addButton ("dynamics.link", "LINK", R (527, 760, 76, 34), true,
-               later ("LINK: the gate, compressor and limiter turn both channels down together, so the stereo image stays put", limitStep))
+               "LINK: the gate, compressor and limiter turn both channels down together, so the stereo image stays put")
         .getProperties().set (ParagonLookAndFeel::ledProperty, true);
 
     // SATURATION.
-    addLed ("sat.on", { 375, 850 }, later ("Saturation on/off", colourStep));
+    addLed ("sat.on", { 375, 850 }, "Saturation on/off");
     addKnob ("sat.drive", P (401, 926), 31, {}, {}, "DRIVE", 0.0, {});
     addButton ("sat.vcaClip", "VCA CLIP", R (459, 878, 70, 30), true, {});
     addKnob ("sat.harmonics", P (579, 926), 31, {}, {}, "HARMONICS", 0.5, {});
@@ -235,14 +223,14 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
         const juce::String id (band.id), name (band.name);
         const auto plate = std::find_if (modules().begin(), modules().end(), [&] (const auto& m) { return name == m.name; })->bounds;
         const auto freqY = plate.getY() + (band.shelf ? 86.0f : 95.0f);
-        addLed (id + ".on", { 684.0f, plate.getY() + 22.0f }, later (name + " band on/off", eqStep));
-        addKnob (id + ".freq", P (732, freqY), 33, band.scale, "Hz", {}, 0.5, later (name + " frequency", eqStep));
-        addKnob (id + ".gain", P (857, freqY - 6.0f), 29, { "-15", "0", "+15" }, {}, "GAIN", 0.5, later (name + " gain, -15 to +15 dB", eqStep));
+        addLed (id + ".on", { 684.0f, plate.getY() + 22.0f }, name + " band on/off");
+        addKnob (id + ".freq", P (732, freqY), 33, band.scale, "Hz", {}, 0.5, name + " frequency");
+        addKnob (id + ".gain", P (857, freqY - 6.0f), 29, { "-15", "0", "+15" }, {}, "GAIN", 0.5, name + " gain, -15 to +15 dB");
         if (band.shelf)
         {
             const auto y = juce::roundToInt (freqY + 53.0f);
-            addButton (id + ".shelf", "SHELF", R (672, y, 88, 22), true, later (name + ": shelf (lit) or bell", eqStep)).setToggleState (true, juce::dontSendNotification);
-            addButton (id + ".shape", {}, R (776, y, 54, 22), true, later (name + ": shelf or bell curve", eqStep))
+            addButton (id + ".shelf", "SHELF", R (672, y, 88, 22), true, name + ": shelf (lit) or bell").setToggleState (true, juce::dontSendNotification);
+            addButton (id + ".shape", {}, R (776, y, 54, 22), true, name + ": shelf or bell curve")
                 .getProperties().set (ParagonLookAndFeel::iconProperty, "shape");
         }
         else
@@ -257,10 +245,10 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
     }
 
     // FILTERS / TONE.
-    addLed ("tone.on", { 962, 104 }, later ("Console colour on/off", colourStep));
-    addKnob ("tone.thd", P (1021, 165), 33, { "OFF", "100" }, {}, "THD", 0.0, later ("THD: harmonic saturation and density", colourStep));
-    addKnob ("tone.vgain", P (1151, 166), 33, { "OFF", "50", "100" }, {}, "V GAIN", 0.0, later ("V GAIN: the console's noise floor (hiss and hum), from off to audible", colourStep));
-    addKnob ("tone.channel", P (1086, 290), 32, {}, {}, {}, 0.0, later ("Picks the console channels (one of 72 each side)", colourStep));
+    addLed ("tone.on", { 962, 104 }, "Console colour on/off");
+    addKnob ("tone.thd", P (1021, 165), 33, { "OFF", "100" }, {}, "THD", 0.0, "THD: harmonic saturation and density");
+    addKnob ("tone.vgain", P (1151, 166), 33, { "OFF", "50", "100" }, {}, "V GAIN", 0.0, "V GAIN: the console's noise floor (hiss and hum), from off to audible");
+    addKnob ("tone.channel", P (1086, 290), 32, {}, {}, {}, 0.0, "Picks the console channels (one of 72 each side)");
 
     // The meter window.
     for (auto* meter : { &inputLeft, &inputRight, &outputLeft, &outputRight })
@@ -304,13 +292,13 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
     }
 
     // MONO MAKER / STEREO WIDTH.
-    addLed ("mono.on", { 967, 892 }, later ("Mono maker on/off", stereoStep));
-    addLed ("width.on", { 1102, 892 }, later ("Stereo width on/off", stereoStep));
-    addKnob ("mono.freq", P (1020, 951), 24, { "20", "100", "500" }, "Hz", {}, 0.5, later ("Mono maker: everything below this is folded to mono", stereoStep));
-    addKnob ("width.amount", P (1155, 951), 24, { "0", "100", "200" }, "%", {}, 0.5, later ("Stereo width: 100% leaves it as it is", stereoStep));
+    addLed ("mono.on", { 967, 892 }, "Mono maker on/off");
+    addLed ("width.on", { 1102, 892 }, "Stereo width on/off");
+    addKnob ("mono.freq", P (1020, 951), 24, { "20", "100", "500" }, "Hz", {}, 0.5, "Mono maker: everything below this is folded to mono");
+    addKnob ("width.amount", P (1155, 951), 24, { "0", "100", "200" }, "%", {}, 0.5, "Stereo width: 100% leaves it as it is");
 
     // IN / OUT: INPUT, Ø and MUTE (working).
-    addLed ("output.on", { 1265, 104 }, later ("The output stage on/off", stereoStep));
+    addLed ("output.on", { 1265, 104 }, "The output stage on/off");
     auto& input = addKnob ("output.input", P (1339, 187), 43, {}, {}, "INPUT", 0.0,
                            "INPUT: the level into the strip, -24 to +12 dB. The IN meters show the signal after it.");
     input.setScale ({ { 0.0f, "-24" }, { 0.25f, "-12" }, { 0.5f, "0" }, { 1.0f, "+12" } });
@@ -326,11 +314,11 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
     muteAttachment = std::make_unique<ButtonAttachment> (processor.getParameters(), ParamIDs::mute, mute);
 
     // STEREO MODE.
-    addButton ("stereo.analog", "ANALOG", R (1275, 421, 112, 32), true, later ("ANALOG: the left and right sides use different console channels", stereoStep));
-    addButton ("stereo.digital", "DIGITAL", R (1275, 459, 112, 32), true, later ("DIGITAL: both sides use the same console channel", stereoStep));
+    addButton ("stereo.analog", "ANALOG", R (1275, 421, 112, 32), true, "ANALOG: the left and right sides use different console channels");
+    addButton ("stereo.digital", "DIGITAL", R (1275, 459, 112, 32), true, "DIGITAL: both sides use the same console channel");
     addRadioGroup ({ "stereo.analog", "stereo.digital" }, 4, "stereo.analog");
-    addButton ("stereo.one", "ONE", R (1263, 521, 64, 32), false, later ("ONE: picks an unused random channel for this PR7-C", stereoStep));
-    addButton ("stereo.all", "ALL", R (1333, 521, 64, 32), false, later ("ALL: picks new random channels for every PR7-C in the session", stereoStep));
+    addButton ("stereo.one", "ONE", R (1263, 521, 64, 32), false, "ONE: picks an unused random channel for this PR7-C");
+    addButton ("stereo.all", "ALL", R (1333, 521, 64, 32), false, "ALL: picks new random channels for every PR7-C in the session");
 
     // OUTPUT TRIM and the fader (working).
     auto& trim = addKnob ("output.trim", P (1332, 647), 34, { "-12", "0", "+12" }, {}, "OUTPUT TRIM", 0.5, "OUTPUT TRIM: fine output level, -12 to +12 dB");

@@ -304,3 +304,20 @@ TEST_CASE ("COMP's gain-change meter and the meter window's COMP meters all see 
     CHECK (meters[6]->getDisplayedReduction() > 10.0f);   // COMP's gain-change meter
     CHECK (meters[0]->getDisplayedReduction() == 0.0f);   // no gate yet
 }
+
+TEST_CASE ("Every control has a tooltip, and none says it isn't built yet", "[ui]")
+{
+    ParagonPR7CAudioProcessor processor;
+    std::unique_ptr<juce::AudioProcessorEditor> editor (processor.createEditor());
+    for (const auto& [id, control] : viewOf (*editor).getControls())
+    {
+        INFO (id.toStdString());
+        juce::String tooltip;
+        if (auto* knob = dynamic_cast<Knob*> (control))
+            tooltip = knob->slider.getTooltip();
+        else if (auto* client = dynamic_cast<juce::TooltipClient*> (control))
+            tooltip = client->getTooltip();
+        CHECK (tooltip.isNotEmpty());
+        CHECK (! tooltip.contains ("Not working yet"));
+    }
+}
