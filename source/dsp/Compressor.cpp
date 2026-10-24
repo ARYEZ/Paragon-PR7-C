@@ -49,6 +49,10 @@ namespace effects
         bypass.prepare (sampleRate, maxBlockSize);
         makeUp.reset (sampleRate, 0.02);
         fetGrit.reset (sampleRate, 0.02);
+        gritOversampling = std::make_unique<juce::dsp::Oversampling<float>> (2, 1, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true, false);
+        gritOversampling->initProcessing ((size_t) maxBlockSize);
+        for (auto* buffer : { &gritAmount, &gritLevel, &gritSignal })
+            buffer->setSize (2, maxBlockSize);
         reset();
         fresh = true;
     }
@@ -59,6 +63,9 @@ namespace effects
         peak = {};
         reduction = {};
         memory = {};
+        if (gritOversampling != nullptr)
+            gritOversampling->reset();
+        gritRunning = false;
         for (auto& r : reductionDb)
             r.store (0.0f);
     }
@@ -95,6 +102,7 @@ namespace effects
         fetGrit.setTargetValue (character == Character::fet ? 1.0f : 0.0f);
 
         std::array<float, 2> most {};
+        auto gritNow = fetGrit.getCurrentValue();   // FET grit's fade, this sample
         auto block = juce::dsp::AudioBlock<float> (audio).getSubBlock (0, (size_t) numSamples);
         bypass.process (block, settings.on, [&] (juce::dsp::AudioBlock<float> wet)
         {
@@ -117,7 +125,7 @@ namespace effects
                     levelDb[0] = levelDb[1] = juce::jmax (levelDb[0], levelDb[1]);
 
                 const auto makeUpGain = makeUp.getNextValue();
-                const auto gritAmount = fetGrit.getNextValue();
+                gritNow = fetGrit.getNextValue();
                 for (int channel = 0; channel < numChannels; ++channel)
                 {
                     const auto c = (size_t) channel;
@@ -131,25 +139,57 @@ namespace effects
                     reduction[c] += (target - reduction[c]) * (target > reduction[c] ? attack : release);
                     most[c] = juce::jmax (most[c], reduction[c]);
 
-                    const auto gain = juce::Decibels::decibelsToGain (-reduction[c]);
-                    auto y = wet.getSample (channel, i) * gain;
-                    if (gritAmount > 0.0f)
-                    {
-                        // FET grit: a little third harmonic, growing with how
-                        // hard it works (about 1% at 20 dB of reduction), at
-                        // any level: the waveform is measured against its own
-                        // peak level, as a FET's distortion follows its gain
-                        // reduction rather than the signal level.
-                        const auto grit = gritAmount * 0.04f * juce::jmin (1.0f, reduction[c] / 20.0f);
-                        const auto shape = juce::jlimit (-1.5f, 1.5f, y / (peak[c] * gain + 1.0e-6f));
-                        y -= grit * y * shape * shape;
-                    }
-                    wet.setSample (channel, i, y * makeUpGain);
+                    const auto gain = juce::Decibels::decibelsToGain (-reduction[c]) * makeUpGain;
+                    wet.setSample (channel, i, wet.getSample (channel, i) * gain);
+
+                    // FET grit: a little third harmonic, growing with how hard
+                    // it works (about 1% at 20 dB of reduction), at any level:
+                    // the waveform is measured against its own peak level, as
+                    // a FET's distortion follows its gain reduction rather
+                    // than the signal level. Added below, at twice the rate.
+                    gritAmount.setSample (channel, i, gritNow * 0.04f * juce::jmin (1.0f, reduction[c] / 20.0f));
+                    gritLevel.setSample (channel, i, peak[c] * gain + 1.0e-6f);
                 }
+            }
+
+            if (gritNow > 0.0f || fetGrit.isSmoothing() || fetGrit.getTargetValue() > 0.0f)
+                addGrit (wet, numSamples);
+            else if (gritRunning)
+            {
+                gritOversampling->reset();
+                gritRunning = false;
             }
         });
 
         for (int channel = 0; channel < 2; ++channel)
             reductionDb[(size_t) channel].store (settings.on ? most[(size_t) juce::jmin (channel, numChannels - 1)] : 0.0f);
+    }
+
+    void Compressor::addGrit (juce::dsp::AudioBlock<float> wet, int numSamples) noexcept
+    {
+        // The compressed sound, up to twice the rate; the grit worked out
+        // there (a cubic: twice the rate is enough that nothing folds back);
+        // then down again and added to the sound.
+        const auto numChannels = wet.getNumChannels();
+        for (size_t channel = 0; channel < numChannels; ++channel)
+            gritSignal.copyFrom ((int) channel, 0, wet.getChannelPointer (channel), numSamples);
+        auto grit = juce::dsp::AudioBlock<float> (gritSignal).getSubBlock (0, (size_t) numSamples).getSubsetChannelBlock (0, numChannels);
+        auto up = gritOversampling->processSamplesUp (grit);
+        for (size_t channel = 0; channel < numChannels; ++channel)
+        {
+            auto* samples = up.getChannelPointer (channel);
+            const auto* amounts = gritAmount.getReadPointer ((int) channel);
+            const auto* levels = gritLevel.getReadPointer ((int) channel);
+            for (int i = 0; i < (int) up.getNumSamples(); ++i)
+            {
+                const auto y = samples[i];
+                const auto shape = juce::jlimit (-1.5f, 1.5f, y / levels[i / 2]);
+                samples[i] = -amounts[i / 2] * y * shape * shape;
+            }
+        }
+        gritOversampling->processSamplesDown (grit);
+        for (size_t channel = 0; channel < numChannels; ++channel)
+            juce::FloatVectorOperations::add (wet.getChannelPointer (channel), grit.getChannelPointer (channel), numSamples);
+        gritRunning = true;
     }
 }

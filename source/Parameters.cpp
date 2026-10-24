@@ -103,6 +103,20 @@ namespace Parameters
 
         // INPUT: 0 dB sits at the top of the knob (half way), so there's as
         // much travel for cutting -24 dB as for adding +12.
+        // A straight range in steps (0.1 dB, 1%...), snapped to whole steps
+        // counted from 0. JUCE's own interval counts them from the minimum
+        // (minimum + step x n), which a fused multiply-add (as on Apple
+        // silicon) rounds a hair off: an EQ gain's 0 dB came out as
+        // 0.0000002 dB, enough to keep every band running at its default.
+        juce::NormalisableRange<float> steppedRange (float minimum, float maximum, float step)
+        {
+            const auto perUnit = std::round (1.0f / step);   // 10 for 0.1, 1 for 1
+            return { minimum, maximum,
+                     [] (float start, float end, float proportion) { return start + (end - start) * proportion; },
+                     [] (float start, float end, float value) { return (value - start) / (end - start); },
+                     [perUnit] (float start, float end, float value) { return juce::jlimit (start, end, std::round (value * perUnit) / perUnit); } };
+        }
+
         juce::NormalisableRange<float> inputRange()
         {
             using namespace ParamRanges;
@@ -178,7 +192,7 @@ namespace Parameters
             juce::AudioParameterFloatAttributes().withLabel ("dB").withStringFromValueFunction (asDb)));
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { ParamIDs::outputTrim, panelVersion }, "Output Trim",
-            juce::NormalisableRange<float> (ParamRanges::outputTrimMin, ParamRanges::outputTrimMax, 0.1f), 0.0f,
+            steppedRange (ParamRanges::outputTrimMin, ParamRanges::outputTrimMax, 0.1f), 0.0f,
             juce::AudioParameterFloatAttributes().withLabel ("dB").withStringFromValueFunction (asDb)));
         layout.add (std::make_unique<juce::AudioParameterBool> (
             juce::ParameterID { ParamIDs::phaseInvert, panelVersion }, "Phase Invert", false,
@@ -214,7 +228,7 @@ namespace Parameters
             frequency (ParamIDs::eqFreq (band.id), name + " Frequency", band.minHz, band.maxHz, band.defaultHz);
             layout.add (std::make_unique<juce::AudioParameterFloat> (
                 juce::ParameterID { ParamIDs::eqGain (band.id), eqVersion }, name + " Gain",
-                juce::NormalisableRange<float> (-eqGainRange, eqGainRange, 0.1f), 0.0f,
+                steppedRange (-eqGainRange, eqGainRange, 0.1f), 0.0f,
                 juce::AudioParameterFloatAttributes().withLabel ("dB").withStringFromValueFunction (asDb)));
             if (band.hasQ)
                 layout.add (std::make_unique<juce::AudioParameterFloat> (
@@ -236,7 +250,7 @@ namespace Parameters
         compBool (ParamIDs::compOn, "Compressor", false);
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { ParamIDs::compThreshold, compVersion }, "Comp Threshold",
-            juce::NormalisableRange<float> (compThresholdMin, compThresholdMax, 0.1f), -18.0f,
+            steppedRange (compThresholdMin, compThresholdMax, 0.1f), -18.0f,
             juce::AudioParameterFloatAttributes().withLabel ("dB").withStringFromValueFunction (asDb)));
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { ParamIDs::compRatio, compVersion }, "Comp Ratio", ratioRange(), 4.0f,
@@ -250,7 +264,7 @@ namespace Parameters
         compBool (ParamIDs::compAuto, "Comp Auto Release", false);
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { ParamIDs::compMakeUp, compVersion }, "Comp Make Up",
-            juce::NormalisableRange<float> (0.0f, compMakeUpMax, 0.1f), 0.0f,
+            steppedRange (0.0f, compMakeUpMax, 0.1f), 0.0f,
             juce::AudioParameterFloatAttributes().withLabel ("dB").withStringFromValueFunction (asDb)));
         layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { ParamIDs::compCharacter, compVersion }, "Comp Character",
                                                                   compCharacters, 0));
@@ -261,17 +275,17 @@ namespace Parameters
                                                                 juce::AudioParameterBoolAttributes().withStringFromValueFunction (onOff)));
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { ParamIDs::limitThreshold, limitVersion }, "Limit Threshold",
-            juce::NormalisableRange<float> (limitThresholdMin, 0.0f, 0.1f), -1.0f,
+            steppedRange (limitThresholdMin, 0.0f, 0.1f), -1.0f,
             juce::AudioParameterFloatAttributes().withLabel ("dB").withStringFromValueFunction (asDb)));
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { ParamIDs::limitMakeUp, limitVersion }, "Limit Make Up",
-            juce::NormalisableRange<float> (0.0f, limitMakeUpMax, 0.1f), 0.0f,
+            steppedRange (0.0f, limitMakeUpMax, 0.1f), 0.0f,
             juce::AudioParameterFloatAttributes().withLabel ("dB").withStringFromValueFunction (asDb)));
         layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { ParamIDs::limitMode, limitVersion }, "Limit Mode",
                                                                   limitModes, 0));
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { ParamIDs::limitMix, limitVersion }, "Limit Mix",
-            juce::NormalisableRange<float> (0.0f, 100.0f, 1.0f), 100.0f,
+            steppedRange (0.0f, 100.0f, 1.0f), 100.0f,
             juce::AudioParameterFloatAttributes().withLabel ("%").withStringFromValueFunction ([] (float v, int) { return juce::String (juce::roundToInt (v)) + "%"; })));
         // GATE / EXP.
         using namespace ParamRanges;
@@ -283,12 +297,12 @@ namespace Parameters
         gateBool (ParamIDs::gateOn, "Gate", false);
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { ParamIDs::gateThreshold, gateVersion }, "Gate Threshold",
-            juce::NormalisableRange<float> (gateThresholdMin, 0.0f, 0.1f), -40.0f,
+            steppedRange (gateThresholdMin, 0.0f, 0.1f), -40.0f,
             juce::AudioParameterFloatAttributes().withLabel ("dB").withStringFromValueFunction (asDb)));
         gateBool (ParamIDs::gateMinus30, "Gate -30", false);
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { ParamIDs::gateRange, gateVersion }, "Gate Range",
-            juce::NormalisableRange<float> (0.0f, gateRangeMax, 0.1f), 40.0f,
+            steppedRange (0.0f, gateRangeMax, 0.1f), 40.0f,
             juce::AudioParameterFloatAttributes().withLabel ("dB").withStringFromValueFunction ([] (float v, int) { return juce::String (v, 1) + " dB"; })));
         gateBool (ParamIDs::gateExpander, "Gate Expander", false);
         layout.add (std::make_unique<juce::AudioParameterFloat> (
@@ -318,10 +332,10 @@ namespace Parameters
         layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { ParamIDs::satOn, satVersion }, "Saturation", false,
                                                                 juce::AudioParameterBoolAttributes().withStringFromValueFunction (onOff)));
         layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { ParamIDs::satDrive, satVersion }, "Sat Drive", juce::NormalisableRange<float> (0.0f, satDriveMax, 0.1f), 6.0f,
+            juce::ParameterID { ParamIDs::satDrive, satVersion }, "Sat Drive", steppedRange (0.0f, satDriveMax, 0.1f), 6.0f,
             juce::AudioParameterFloatAttributes().withLabel ("dB").withStringFromValueFunction (asDb)));
         layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { ParamIDs::satHarmonics, satVersion }, "Sat Harmonics", juce::NormalisableRange<float> (0.0f, 100.0f, 1.0f), 30.0f,
+            juce::ParameterID { ParamIDs::satHarmonics, satVersion }, "Sat Harmonics", steppedRange (0.0f, 100.0f, 1.0f), 30.0f,
             juce::AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int)
             {
                 const auto odd = juce::roundToInt (v);
@@ -330,7 +344,7 @@ namespace Parameters
         layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { ParamIDs::satVcaClip, satVersion }, "Sat VCA Clip", false,
                                                                 juce::AudioParameterBoolAttributes().withStringFromValueFunction (onOff)));
         layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { ParamIDs::satMix, satVersion }, "Sat Mix", juce::NormalisableRange<float> (0.0f, 100.0f, 1.0f), 100.0f,
+            juce::ParameterID { ParamIDs::satMix, satVersion }, "Sat Mix", steppedRange (0.0f, 100.0f, 1.0f), 100.0f,
             juce::AudioParameterFloatAttributes().withLabel ("%").withStringFromValueFunction (percent)));
 
         // FILTERS / TONE: the console colour.
@@ -338,10 +352,10 @@ namespace Parameters
                                                                 juce::AudioParameterBoolAttributes().withStringFromValueFunction (onOff)));
         const auto offOrPercent = [] (float v, int) { return juce::roundToInt (v) == 0 ? juce::String ("OFF") : juce::String (juce::roundToInt (v)) + "%"; };
         layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { ParamIDs::toneThd, toneVersion }, "THD", juce::NormalisableRange<float> (0.0f, 100.0f, 1.0f), 0.0f,
+            juce::ParameterID { ParamIDs::toneThd, toneVersion }, "THD", steppedRange (0.0f, 100.0f, 1.0f), 0.0f,
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (offOrPercent)));
         layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { ParamIDs::toneVGain, toneVersion }, "V Gain", juce::NormalisableRange<float> (0.0f, 100.0f, 1.0f), 0.0f,
+            juce::ParameterID { ParamIDs::toneVGain, toneVersion }, "V Gain", steppedRange (0.0f, 100.0f, 1.0f), 0.0f,
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (offOrPercent)));
         layout.add (std::make_unique<juce::AudioParameterInt> (
             juce::ParameterID { ParamIDs::toneChannel, toneVersion }, "Console Channel", 1, 72, 1,
@@ -354,7 +368,7 @@ namespace Parameters
         layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { ParamIDs::widthOn, stereoVersion }, "Stereo Width", false,
                                                                 juce::AudioParameterBoolAttributes().withStringFromValueFunction (onOff)));
         layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { ParamIDs::width, stereoVersion }, "Width", juce::NormalisableRange<float> (0.0f, widthMax, 1.0f), 100.0f,
+            juce::ParameterID { ParamIDs::width, stereoVersion }, "Width", steppedRange (0.0f, widthMax, 1.0f), 100.0f,
             juce::AudioParameterFloatAttributes().withLabel ("%").withStringFromValueFunction (percent)));
         layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { ParamIDs::stereoMode, stereoVersion }, "Stereo Mode",
                                                                   stereoModes, 0));

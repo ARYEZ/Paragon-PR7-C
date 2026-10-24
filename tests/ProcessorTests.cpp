@@ -55,6 +55,23 @@ TEST_CASE ("At its defaults the strip passes stereo audio through untouched", "[
             REQUIRE_THAT (output.getSample (channel, i), WithinAbs (input.getSample (channel, i), 1.0e-6));
 }
 
+TEST_CASE ("Defaults read back exactly, so modules at their defaults switch themselves off", "[processor]")
+{
+    // A stepped knob's 0 must be exactly 0, not a rounding hair off it (as
+    // a fused multiply-add on Apple silicon once made it): an EQ band at
+    // 0.0000002 dB still runs.
+    ParagonPR7CAudioProcessor processor;
+    for (auto* parameter : processor.getParameters().processor.getParameters())
+    {
+        auto* ranged = dynamic_cast<juce::RangedAudioParameter*> (parameter);
+        REQUIRE (ranged != nullptr);
+        INFO (ranged->getParameterID().toStdString());
+        const auto raw = processor.getParameters().getRawParameterValue (ranged->getParameterID())->load();
+        if (std::abs (raw) < 0.01f)
+            CHECK (juce::exactlyEqual (raw, 0.0f));
+    }
+}
+
 TEST_CASE ("OUTPUT LEVEL sets the level, on both channels", "[processor]")
 {
     ParagonPR7CAudioProcessor processor;

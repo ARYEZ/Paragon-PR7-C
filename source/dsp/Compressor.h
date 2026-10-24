@@ -2,6 +2,7 @@
 
 #include <array>
 #include <atomic>
+#include <memory>
 
 #include "dsp/EffectUtils.h"
 
@@ -19,7 +20,12 @@ namespace effects
     //         like an optical cell: smooth.
     //   FET   a peak detector (it catches every transient), a firm knee,
     //         and a touch of third-harmonic grit that grows with the gain
-    //         reduction: fast and aggressive.
+    //         reduction: fast and aggressive. The grit is worked out at
+    //         twice the sample rate, so its harmonics never fold back down
+    //         as aliasing, and added to the compressed sound. Only the grit
+    //         goes through those filters (a few samples late, which can't
+    //         be heard at 1%); the rest of the sound doesn't, so VCA and OPTO
+    //         are untouched and switching character doesn't shift anything.
     //
     // RATIO's SOFT position (ratio 1) is a curve whose ratio rises with
     // level: about 3:1 at 8 dB over the threshold, 6:1 at 20 dB, 10:1 at
@@ -69,5 +75,12 @@ namespace effects
         juce::SmoothedValue<float> makeUp { 1.0f }, fetGrit { 0.0f };   // the grit fades in and out with FET
         std::array<float, 2> meanSquare {}, peak {}, reduction {}, memory {};
         std::array<std::atomic<float>, 2> reductionDb {};
+
+        // FET grit at twice the rate: per sample, its amount and the level
+        // the waveform is measured against, and the sound it works on.
+        void addGrit (juce::dsp::AudioBlock<float>, int numSamples) noexcept;
+        std::unique_ptr<juce::dsp::Oversampling<float>> gritOversampling;
+        juce::AudioBuffer<float> gritAmount, gritLevel, gritSignal;
+        bool gritRunning = false;
     };
 }
