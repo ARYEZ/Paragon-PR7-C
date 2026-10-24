@@ -457,7 +457,7 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
                 "V GAIN: the console's noise floor, hiss and a little mains hum, from off to audible");
     attachKnob ("tone.channel", ParamIDs::toneChannel, {},
                 "Console channel: each of the 72 has its own small differences in the EQ, filters, THD and noise. "
-                "LEFT shows the left side's channel; the right side uses the next one. Channel 1 is the exact design.");
+                "LEFT shows the left side's channel; the right side uses the next one (ANALOG) or the same one (DIGITAL). Channel 1 is the exact design.");
     {
         auto* parameter = processor.getParameters().getParameter (ParamIDs::toneChannel);
         auto attachment = std::make_unique<juce::ParameterAttachment> (*parameter, [this] (float value)
@@ -467,6 +467,44 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
         });
         attachment->sendInitialUpdate();
         switchAttachments.push_back (std::move (attachment));
+    }
+
+    // MONO MAKER / STEREO WIDTH and the STEREO MODE (step 7).
+    attachButton ("mono.on", ParamIDs::monoOn, "Mono maker on/off: folds the lows to mono, for a solid centre and tight low end");
+    attachKnob ("mono.freq", ParamIDs::monoFreq, { { 20.0f, "20" }, { 100.0f, "100" }, { 500.0f, "500" } },
+                "Mono maker frequency (Hz): everything below it is folded to mono. Above it, the stereo image is untouched.");
+    attachButton ("width.on", ParamIDs::widthOn, "Stereo width on/off");
+    attachKnob ("width.amount", ParamIDs::width, { { 0.0f, "0" }, { 100.0f, "100" }, { 200.0f, "200" } },
+                "Stereo width (%): 0 is mono, 100 as it was, 200 twice as wide. The centre and the mono sum stay the same at any width.");
+    attachChoice ({ "stereo.analog", "stereo.digital" }, ParamIDs::stereoMode);
+    if (auto* analog = dynamic_cast<juce::Button*> (findControl ("stereo.analog")))
+        analog->setTooltip ("ANALOG: the right side uses the console channel next to the left's, so the two sides differ slightly, as on a real console");
+    if (auto* digital = dynamic_cast<juce::Button*> (findControl ("stereo.digital")))
+        digital->setTooltip ("DIGITAL: both sides use the left side's console channel, so they're treated identically");
+    {
+        auto* parameter = processor.getParameters().getParameter (ParamIDs::stereoMode);
+        auto attachment = std::make_unique<juce::ParameterAttachment> (*parameter, [this] (float value)
+        {
+            analogMode = juce::roundToInt (value) == 0;
+            repaint (juce::Rectangle<int> (960, 250, 250, 66));
+        });
+        attachment->sendInitialUpdate();
+        switchAttachments.push_back (std::move (attachment));
+    }
+    for (const auto& [id, tip] : { std::pair ("stereo.one", "ONE: moves this PR7-C to a random console channel that no other PR7-C in the session is using"),
+                                   { "stereo.all", "ALL: gives every PR7-C in the session new random console channels, each its own, as tracks on a real console" } })
+    {
+        auto* button = dynamic_cast<juce::Button*> (findControl (id));
+        button->setTooltip (tip);
+        button->onClick = juce::String (id) == "stereo.one" ? std::function<void()> ([this] { ChannelRegistry::rerollOne (processor); })
+                                                            : std::function<void()> ([] { ChannelRegistry::rerollAll(); });
+    }
+    if (auto* lamp = dynamic_cast<juce::Button*> (findControl ("output.on")))
+    {
+        // The output stage can't be bypassed: its lamp just shows it's live.
+        lamp->setClickingTogglesState (false);
+        lamp->setToggleState (true, juce::dontSendNotification);
+        lamp->setTooltip ("The output stage: INPUT, Ø, MUTE, the stereo mode, OUTPUT TRIM and the fader. Always on.");
     }
 
     // LIMIT (step 4).
@@ -799,7 +837,7 @@ void MainView::paint (juce::Graphics& g)
         g.drawText ("CONSOLE CHANNEL", badge, juce::Justification::centred, false);
 
         const auto twoDigits = [] (int number) { return juce::String (number).paddedLeft ('0', 2); };
-        const auto left = twoDigits (channelNumber), right = twoDigits (channelNumber % 72 + 1);
+        const auto left = twoDigits (channelNumber), right = twoDigits (analogMode ? channelNumber % 72 + 1 : channelNumber);
         for (const auto& [area, number] : { std::pair (juce::Rectangle<float> (965.0f, 256.0f, 77.0f, 56.0f), left),
                                             { juce::Rectangle<float> (1129.0f, 256.0f, 77.0f, 56.0f), right } })
         {

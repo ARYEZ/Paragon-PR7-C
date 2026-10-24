@@ -34,8 +34,36 @@ ParagonPR7CAudioProcessor::ParagonPR7CAudioProcessor()
     satParameters = { raw (ParamIDs::satOn), raw (ParamIDs::satDrive), raw (ParamIDs::satHarmonics), raw (ParamIDs::satVcaClip),
                       raw (ParamIDs::satMix) };
     toneParameters = { raw (ParamIDs::toneOn), raw (ParamIDs::toneThd), raw (ParamIDs::toneVGain), raw (ParamIDs::toneChannel) };
+    stereoParameters = { raw (ParamIDs::monoOn), raw (ParamIDs::monoFreq), raw (ParamIDs::widthOn), raw (ParamIDs::width),
+                         raw (ParamIDs::stereoMode) };
     limitParameters = { raw (ParamIDs::limitOn), raw (ParamIDs::limitThreshold), raw (ParamIDs::limitMakeUp), raw (ParamIDs::limitMode),
                         raw (ParamIDs::limitMix) };
+    ChannelRegistry::add (*this);
+}
+
+ParagonPR7CAudioProcessor::~ParagonPR7CAudioProcessor()
+{
+    ChannelRegistry::remove (*this);
+}
+
+int ParagonPR7CAudioProcessor::getConsoleChannel() const noexcept
+{
+    return juce::jlimit (1, effects::ConsoleChannel::count, juce::roundToInt (toneParameters.channel->load()));
+}
+
+bool ParagonPR7CAudioProcessor::isAnalog() const noexcept
+{
+    return juce::roundToInt (stereoParameters.mode->load()) == 0;
+}
+
+void ParagonPR7CAudioProcessor::setConsoleChannel (int channel)
+{
+    if (auto* parameter = parameters.getParameter (ParamIDs::toneChannel))
+    {
+        parameter->beginChangeGesture();
+        parameter->setValueNotifyingHost (parameter->convertTo0to1 ((float) channel));
+        parameter->endChangeGesture();
+    }
 }
 
 ParagonPR7CAudioProcessor::EqBands ParagonPR7CAudioProcessor::makeEqBands()
@@ -66,6 +94,7 @@ void ParagonPR7CAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     limiter.prepare (sampleRate, maxBlockSize);
     saturation.prepare (sampleRate, maxBlockSize);
     colour.prepare (sampleRate, maxBlockSize);
+    stereoTools.prepare (sampleRate, maxBlockSize);
     filtersSidechain.prepare (sampleRate);
     for (auto* gain : { &inputGain, &outputGain })
         gain->reset (sampleRate, 0.02);
@@ -91,10 +120,11 @@ effects::CutFilters::Settings ParagonPR7CAudioProcessor::filterSettings (int pla
 void ParagonPR7CAudioProcessor::updateSides() noexcept
 {
     // Off, both sides are the design itself (channel 1). On, the left side
-    // is the chosen channel and the right the next one.
+    // is the chosen channel, and the right the next one (ANALOG) or the
+    // same one (DIGITAL).
     const auto on = toneParameters.on->load() >= 0.5f;
-    const auto left = on ? juce::roundToInt (toneParameters.channel->load()) : 1;
-    const std::array<int, 2> wanted { left, on ? effects::ConsoleChannel::nextTo (left) : 1 };
+    const auto left = on ? getConsoleChannel() : 1;
+    const std::array<int, 2> wanted { left, on && isAnalog() ? effects::ConsoleChannel::nextTo (left) : left };
     for (size_t side = 0; side < 2; ++side)
     {
         if (wanted[side] != sideNumbers[side])
@@ -255,7 +285,10 @@ void ParagonPR7CAudioProcessor::processModules (juce::AudioBuffer<float>& buffer
     }
     colour.process (buffer, numSamples, colourSettings);
 
-    // The stereo tools will go here.
+    // MONO MAKER, then STEREO WIDTH.
+    const auto& st = stereoParameters;
+    stereoTools.process (buffer, numSamples, { st.monoOn->load() >= 0.5f, st.monoFrequency->load(),
+                                               st.widthOn->load() >= 0.5f, st.width->load() / 100.0f });
 
     // LISTEN: hear what the gate and compressor hear instead (a 20 ms crossfade).
     listen.setTargetValue (sc.listen->load() >= 0.5f ? 1.0f : 0.0f);

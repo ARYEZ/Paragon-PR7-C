@@ -2,6 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
+#include "ChannelRegistry.h"
 #include "LevelMeterSource.h"
 #include "Parameters.h"
 #include "dsp/ChannelEq.h"
@@ -11,17 +12,19 @@
 #include "dsp/Gate.h"
 #include "dsp/Limiter.h"
 #include "dsp/Saturation.h"
+#include "dsp/StereoTools.h"
 
 // The channel strip. True stereo (stereo in, stereo out), or mono in, mono
 // out on a mono track. So far: INPUT, the HPF / LPF, the gate / expander
 // and SC FILTER, the compressor, the five-band EQ, the limiter, the
 // saturation, the console colour (THD, V GAIN and the console channels),
-// the OUTPUT column (Ø, MUTE, OUTPUT TRIM and the fader) and
+// MONO MAKER, STEREO WIDTH and the STEREO MODE, the OUTPUT column (Ø, MUTE, OUTPUT TRIM and the fader) and
 // the meters. The other modules are built one at a time (see CLAUDE.md).
 class ParagonPR7CAudioProcessor final : public juce::AudioProcessor
 {
 public:
     ParagonPR7CAudioProcessor();
+    ~ParagonPR7CAudioProcessor() override;
 
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override {}
@@ -66,6 +69,13 @@ public:
         return gainReduction[(size_t) dynamics][(size_t) juce::jlimit (0, 1, channel)];
     }
 
+    // The console channels: the left side's (1 to 72), and whether the
+    // right side uses the next one (ANALOG) or the same one (DIGITAL).
+    // setConsoleChannel is for the message thread (RANDOM CH.).
+    int getConsoleChannel() const noexcept;
+    bool isAnalog() const noexcept;
+    void setConsoleChannel (int);
+
 private:
     void pushMeters (std::array<LevelMeterSource, 2>&, const juce::AudioBuffer<float>&, int numSamples) noexcept;
     // The modules, in their fixed order, on a stretch no longer than the
@@ -104,6 +114,11 @@ private:
     std::array<effects::ConsoleChannel, 2> sides;
     std::array<int, 2> sideNumbers { 1, 1 };   // the channels `sides` holds (0: none yet)
     void updateSides() noexcept;
+
+    // MONO MAKER / STEREO WIDTH, and the STEREO MODE.
+    struct StereoParameters { std::atomic<float>* monoOn, * monoFrequency, * widthOn, * width, * mode; };
+    StereoParameters stereoParameters {};
+    effects::StereoTools stereoTools;
 
     // The gate and compressor, and their shared sidechain: what their
     // detectors hear (the audio at the gate's input, through the HPF / LPF

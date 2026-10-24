@@ -14,15 +14,16 @@ Unlike PR7-B and PR7-V, it is **not** a copy of PR7-G. It was seeded lean: PR7-G
 
 - **The plugin:** true stereo (stereo in/out, or mono in/out on a mono track).
   - Its own identity: `Paragon PR7-C`, plugin code `Pr7c`, bundle `com.paragon.paragonpr7c`, maker code `Prgn`.
-  - Parameters: `inputGain`, `outputTrim`, `outputLevel` (the fader), `phaseInvert`, `mute`; the HPF / LPF (`hpfOn`, `hpfFreq`, `lpfOn`, `lpfFreq`, `filterPlacement`); the EQ (`<band>On/Freq/Gain` plus `<band>Q` or `<band>Shelf`, bands from `ParamRanges::eqBands`); the gate (`gate*`), SC FILTER (`sc*`), compressor (`comp*`), limiter (`limit*`), saturation (`sat*`), the console colour (`toneOn`, `toneThd`, `toneVGain`, `toneChannel`) and `dynamicsLink`. Input and output peak meters (console-calibrated, with OVL), and gain-reduction sources (`getGainReduction`) for the GR meters, which stay at 0 until the dynamics exist.
+  - Parameters: `inputGain`, `outputTrim`, `outputLevel` (the fader), `phaseInvert`, `mute`; the HPF / LPF (`hpfOn`, `hpfFreq`, `lpfOn`, `lpfFreq`, `filterPlacement`); the EQ (`<band>On/Freq/Gain` plus `<band>Q` or `<band>Shelf`, bands from `ParamRanges::eqBands`); the gate (`gate*`), SC FILTER (`sc*`), compressor (`comp*`), limiter (`limit*`), saturation (`sat*`), the console colour (`toneOn`, `toneThd`, `toneVGain`, `toneChannel`), the stereo tools (`monoOn`, `monoFreq`, `widthOn`, `width`, `stereoMode`) and `dynamicsLink`. Input and output peak meters (console-calibrated, with OVL), and gain-reduction sources (`getGainReduction`) for the GR meters, which stay at 0 until the dynamics exist.
 - **`source/ui/MainView`:** a fixed **1448 × 1086** canvas, exactly the concept image's size, so coordinates can be read straight off `docs/concept.png`. The editor scales it to the window.
   - **Step 1 is done:** every module's panel is drawn with all its controls, placed as on the concept. `MainView::modules()` holds each module's rectangle.
   - Controls are registered by ID (`"comp.ratio"`, `"hf.on"`...; see `MainView.cpp`). Controls of unbuilt modules are **inert** (tooltips say which step brings them). Each step creates the parameters and brings its controls to life with `attachKnob` (prints the scale at the true values and turns on the value popup), `attachButton` and `attachSwitch`.
-- **`source/dsp/`:** `Biquad` (cookbook filters), `ChannelEq` (`EqBand`, `CutFilters`), `Compressor`, `Limiter`, `Gate`, `Saturation`, `ConsoleColour` (THD and noise) and `ConsoleChannel` (the 72 channels' tolerances).
+- **`source/dsp/`:** `Biquad` (cookbook filters), `ChannelEq` (`EqBand`, `CutFilters`), `Compressor`, `Limiter`, `Gate`, `Saturation`, `ConsoleColour` (THD and noise), `ConsoleChannel` (the 72 channels' tolerances) and `StereoTools` (mono maker, width).
+  - `source/ChannelRegistry`: every PR7-C in the process, for RANDOM CH. (message thread only).
   - The HPF / LPF and EQ run one instance per side (`processFilters`, `processEq`), as each side can be a different console channel.
   - Modules jump straight to their settings on the first block after `prepare`/`reset` (`fresh`), and glide or fade only for changes made while playing.
   - The processor runs the modules in stretches no longer than the prepared block size (`processModules`), as their working buffers are that size. The gate and compressor share one detector signal, `sidechain`: the audio at the gate's input, through the HPF / LPF when they're on SC, then the SC FILTER. LISTEN crossfades the strip's output to it.
-- **`PARAGON_SNAPSHOT_DEMO=1`** switches modules on for a render that shows them working (the expander, compressor, limiter and saturation so far).
+- **`PARAGON_SNAPSHOT_DEMO=1`** switches modules on for a render that shows them working (the expander, compressor, limiter, saturation, console colour and stereo tools).
   - `source/ui/Controls`: `Knob` (draws itself; its slider only takes the mouse over the knob), `Led`, `LeverSwitch`, `RoundButton`, `GainReductionMeter`. Buttons are `TextButton`s with `ParagonLookAndFeel::consoleButtonProperty`.
 - **Carried over from PR7-G:**
   - `ParagonLookAndFeel` (Inter fonts, knobs, LED/neon bars, piano keys, chrome bezels).
@@ -77,22 +78,18 @@ The behaviour notes below are **modelled on** a classic 1970s/80s British consol
    - **The channel knob** (`toneChannel`, 1–72, default 1) and the LEFT / RIGHT displays: the left side uses the chosen channel, the right the next (72 wraps to 1).
      - **Channel 1 is the exact nominal design** (factors of exactly 1, so bit-exact with the colour off).
      - Each channel's tolerances come from a hash of its number (`ConsoleChannel::number`), the same every time: EQ frequencies ±4% and gains ±4% (of the gain dialled in, so flat stays flat), HPF / LPF corners ±3%, THD's 2nd and 3rd ±25%, hiss ±1.5 dB, hum ±3 dB. The sizes are our guess; the SATURATION module and the dynamics don't vary.
-     - Step 7's STEREO MODE (DIGITAL: both sides the left channel; ONE / ALL) builds on `updateSides()` in the processor.
+     - The STEREO MODE picks the right side's channel in `updateSides()`.
    - **The meter window:** IN/OUT peak meters, L and R, scale +24 to -60. An **IN / OUT** button chooses whether they show the input or output. Small **GR / COMP / LIMIT** gain-reduction meters run along the bottom, for L and R.
-9. **MONO MAKER / STEREO WIDTH.**
-   - **MONO MAKER** (about 20–200 Hz) folds everything below the frequency to mono.
-   - **STEREO WIDTH** (0 to well over 100%) widens with mid/side, keeping the centre and staying mono-compatible.
-   - Each has an on LED.
+9. **MONO MAKER / STEREO WIDTH. (Built, step 7; our design.)** Both off by default, each with its on LED and a 20 ms fade; nothing happens on a mono track. Mono maker first, then width.
+   - **MONO MAKER** 20–500 Hz (default 100): the side goes through a Linkwitz-Riley 24 dB/oct high-pass (two Butterworth sections); the mid through the same crossover's low + high halves summed (an allpass), so mid and side keep the same phase and the image above the frequency is exact. Coefficients every 8 samples while the frequency glides (every 32 clicked slightly).
+   - **STEREO WIDTH** 0–200% (default 100): side × width; the mid (and so the mono sum) is never touched.
 10. **OUTPUT.**
     - **OUTPUT LEVEL** knob (-24 to +12 dB).
     - **Ø** (phase invert) and **MUTE**.
-11. **STEREO MODE.**
-    - **ANALOG:** left and right use different channels (the two numbers).
-    - **RANDOM CH.**, **ONE**, **ALL** follow the reference:
-      - **ONE** picks a random unused channel for this instance.
-      - **ALL** re-picks for every PR7-C instance in the session, so each track has its own.
-      - The instances need to know about each other through a shared, in-process registry.
-    - *Confirm with the owner exactly what each button does, and whether there's a "digital" (both sides the same channel) mode.*
+11. **STEREO MODE. (Built, step 7.)** `stereoMode`: **ANALOG** (default; the right side uses the next channel) or **DIGITAL** (both use the left channel; the RIGHT display shows the same number).
+    - **RANDOM CH.** (momentary keys, `ChannelRegistry`): **ONE** moves this instance to a random channel that no other PR7-C in the process uses (ANALOG takes its channel and the next; DIGITAL only its own), never its current one. **ALL** re-rolls every instance in turn, each avoiding those given out before it. With nothing free (over 36 ANALOG instances), any other channel. The new channel is set as a parameter change (the host records it).
+    - A host that runs each plugin in its own process can't share the registry.
+    - The IN / OUT lamp (`output.on`) is lit and does nothing: the output stage is always on.
 12. **OUTPUT TRIM** knob (±12 dB) and the **output fader** (+10 to -60 dB). *See open questions.*
 13. **Header:**
     - The preset name with ◀ ▶.

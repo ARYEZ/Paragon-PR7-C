@@ -77,6 +77,13 @@ namespace ParamIDs
     inline constexpr auto toneVGain = "toneVGain";           // %: the noise floor
     inline constexpr auto toneChannel = "toneChannel";       // 1 to 72: the left side's console channel (the right uses the next)
 
+    // MONO MAKER / STEREO WIDTH, and the STEREO MODE.
+    inline constexpr auto monoOn = "monoOn";
+    inline constexpr auto monoFreq = "monoFreq";             // Hz: below it, mono
+    inline constexpr auto widthOn = "widthOn";
+    inline constexpr auto width = "width";                   // %: 100 = as it was
+    inline constexpr auto stereoMode = "stereoMode";         // choice: Analog, Digital
+
     // LINK, on the LIMIT panel: links the gate, compressor and limiter.
     inline constexpr auto dynamicsLink = "dynamicsLink";
 }
@@ -127,6 +134,10 @@ namespace ParamRanges
     inline constexpr float scHighQ = 2.5f;   // the SC FILTER's resonance with HIGH Q
 
     inline constexpr float satDriveMax = 24.0f;
+
+    inline constexpr float monoFreqMin = 20.0f, monoFreqMax = 500.0f, monoFreqDefault = 100.0f;
+    inline constexpr float widthMax = 200.0f;   // %
+    inline const juce::StringArray stereoModes { "Analog", "Digital" };   // saved by index: only append
 
     // RATIO's printed marks, evenly spaced round the knob: SOFT (1), then
     // 1.5:1 to infinite (30). The travel between marks is even in log ratio.

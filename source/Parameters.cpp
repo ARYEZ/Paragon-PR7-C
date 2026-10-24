@@ -14,6 +14,7 @@ namespace Parameters
         constexpr int gateVersion = 6;    // the gate / expander and the SC FILTER
         constexpr int satVersion = 7;     // the saturation
         constexpr int toneVersion = 8;    // the console colour (THD, V GAIN, the channels)
+        constexpr int stereoVersion = 9;  // MONO MAKER, STEREO WIDTH and the STEREO MODE
 
         // RATIO: the marks evenly round the knob, log-even between them. The
         // bottom stretch (below 1.25) is the SOFT position.
@@ -344,10 +345,19 @@ namespace Parameters
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (offOrPercent)));
         layout.add (std::make_unique<juce::AudioParameterInt> (
             juce::ParameterID { ParamIDs::toneChannel, toneVersion }, "Console Channel", 1, 72, 1,
-            juce::AudioParameterIntAttributes().withStringFromValueFunction ([] (int left, int)
-            {
-                return juce::String (left) + " / " + juce::String (left % 72 + 1);
-            })));
+            juce::AudioParameterIntAttributes().withStringFromValueFunction ([] (int left, int) { return "Channel " + juce::String (left); })));
+
+        // MONO MAKER / STEREO WIDTH, and the STEREO MODE.
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { ParamIDs::monoOn, stereoVersion }, "Mono Maker", false,
+                                                                juce::AudioParameterBoolAttributes().withStringFromValueFunction (onOff)));
+        frequencyOf (layout, ParamIDs::monoFreq, "Mono Maker Freq", monoFreqMin, monoFreqMax, monoFreqDefault, stereoVersion);
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { ParamIDs::widthOn, stereoVersion }, "Stereo Width", false,
+                                                                juce::AudioParameterBoolAttributes().withStringFromValueFunction (onOff)));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { ParamIDs::width, stereoVersion }, "Width", juce::NormalisableRange<float> (0.0f, widthMax, 1.0f), 100.0f,
+            juce::AudioParameterFloatAttributes().withLabel ("%").withStringFromValueFunction (percent)));
+        layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { ParamIDs::stereoMode, stereoVersion }, "Stereo Mode",
+                                                                  stereoModes, 0));
         return layout;
     }
 }

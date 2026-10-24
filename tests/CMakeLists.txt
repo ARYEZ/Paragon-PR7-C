@@ -14,6 +14,7 @@ add_executable(ParagonPR7CTests
     GateTests.cpp
     SaturationTests.cpp
     ColourTests.cpp
+    StereoTests.cpp
     EditorSnapshot.cpp)
 
 # Link the plugin's shared code (processor, editor, JUCE modules) so the

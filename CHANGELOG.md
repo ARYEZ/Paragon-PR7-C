@@ -16,6 +16,12 @@ Each version's notes appear on its GitHub Release page.
   - **The channel knob** picks one of **72 console channels**, each with its own tiny, fixed differences in the EQ, filters, THD and noise. LEFT shows the left side's channel; the right side uses the next one, so left and right are never quite identical, like a real stereo pair on a console. **Channel 1 is the exact design.** Defaults: 1 / 2.
   - The FILTERS / TONE lamp switches all of it off: both sides are then the exact design.
   - In songs saved with earlier versions, the EQ and filters on the right side now follow channel 2, so they differ from the left by a fraction of a dB. Switch the FILTERS / TONE lamp off to get the old, identical sides back.
+- **The stereo tools work.** Our own design:
+  - **MONO MAKER** (20 to 500 Hz) folds everything below its frequency to mono, for a solid centre and tight low end. Above the frequency, the stereo image is exactly as it was.
+  - **STEREO WIDTH** (0 to 200%): 0 is mono, 100 as it was, 200 twice as wide. The centre is never touched, so it always sums to mono the same.
+  - Both are off by default.
+- **STEREO MODE works.** **ANALOG** (the default): the right side uses the console channel next to the left's, so the sides differ very slightly. **DIGITAL**: both sides use the left's channel, so they're treated identically.
+- **RANDOM CH.**: **ONE** moves this PR7-C to a random console channel no other PR7-C in your session is using. **ALL** gives every PR7-C in the session its own new channels, like tracks on a real console.
 
 ## 0.3.0
 
