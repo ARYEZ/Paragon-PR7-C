@@ -1,5 +1,6 @@
 #include "ParagonLookAndFeel.h"
 
+#include "Controls.h"
 #include "Finish.h"
 
 #include <ParagonFonts.h>
@@ -68,6 +69,34 @@ void ParagonLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button& 
         return;
     }
 
+    if (button.getProperties()[consoleButtonProperty])
+    {
+        // A dark key sunk in a recess; when on, light from its lettering
+        // fills the key's lower half.
+        const auto area = button.getLocalBounds().toFloat().reduced (1.5f);
+        if (button.getProperties()[bareProperty])
+        {
+            if (highlighted || down)
+            {
+                g.setColour (juce::Colours::white.withAlpha (down ? 0.12f : 0.06f));
+                g.fillRoundedRectangle (area, 4.0f);
+            }
+            return;
+        }
+        g.setColour (juce::Colours::black.withAlpha (0.5f));
+        g.fillRoundedRectangle (area.expanded (1.0f), 5.5f);
+        const auto neon = Finish::neonKeys();
+        drawPianoKey (g, area.reduced (1.0f), 4.0f, 2.2f, down, highlighted, neon);
+        if (button.getToggleState() && ! neon && ! button.getProperties().contains (iconProperty))
+        {
+            const auto lit = button.getProperties()[alertProperty] ? ParagonColours::meterRed : ParagonColours::accent;
+            const auto face = area.reduced (4.0f, 3.0f);
+            g.setGradientFill (juce::ColourGradient (lit.withAlpha (0.0f), 0.0f, face.getY(), lit.withAlpha (0.35f), 0.0f, face.getBottom(), false));
+            g.fillRoundedRectangle (face, 3.0f);
+        }
+        return;
+    }
+
     if (button.getProperties()[outlinedButtonProperty])
     {
         auto box = button.getLocalBounds().toFloat().reduced (0.5f);
@@ -117,6 +146,54 @@ void ParagonLookAndFeel::drawButtonText (juce::Graphics& g, juce::TextButton& bu
         g.setFont (juce::FontOptions ((float) *size));
         g.setColour (button.findColour (juce::TextButton::textColourOffId));
         g.drawFittedText (button.getButtonText(), button.getLocalBounds().reduced (4, 0), juce::Justification::centred, 1, 0.8f);
+        return;
+    }
+
+    if (button.getProperties()[consoleButtonProperty])
+    {
+        const auto& properties = button.getProperties();
+        const auto on = button.getToggleState();
+        const auto neon = Finish::neonKeys();
+        auto area = button.getLocalBounds().toFloat().reduced (5.0f, 4.0f).translated (0.0f, down ? 0.5f : -0.5f);
+        const auto litColour = properties[alertProperty] ? ParagonColours::meterRed.brighter (0.15f)
+                                                         : (neon ? juce::Colour (0xffffe9a8) : juce::Colour (0xffffb04a));
+        const auto colour = ! button.isEnabled() ? juce::Colours::white.withAlpha (0.4f)
+                                                 : on ? litColour : juce::Colour (0xffe9e5e8);
+
+        if (properties.contains (iconProperty))
+        {
+            drawIcon (g, properties[iconProperty].toString(), area, colour, on);
+            return;
+        }
+
+        const auto text = button.getButtonText();
+        if (properties[ledProperty])
+        {
+            const auto ledSize = juce::jmin (area.getHeight(), 16.0f);
+            const auto led = text.isEmpty() ? area.withSizeKeepingCentre (ledSize, ledSize)
+                                            : area.removeFromLeft (ledSize + 6.0f).withSizeKeepingCentre (ledSize, ledSize);
+            Led::drawLed (g, led, on);
+            if (text.isEmpty())
+                return;
+        }
+
+        g.setFont (juce::FontOptions (juce::jmin (13.0f, area.getHeight() * 0.62f), juce::Font::bold));
+        const auto textArea = area.toNearestInt();
+        if (on)
+        {
+            // A soft glow round lit lettering, and the neon line under it.
+            g.setColour (colour.withAlpha (0.3f));
+            for (auto offset : { juce::Point<int> (-1, 0), { 1, 0 }, { 0, -1 }, { 0, 1 } })
+                g.drawFittedText (text, textArea + offset, juce::Justification::centred, 1, 0.8f);
+            if (! properties[ledProperty] && area.getHeight() >= 18.0f)
+            {
+                const auto line = juce::Rectangle<float> (area.getWidth() * 0.84f, 2.0f)
+                                      .withCentre ({ area.getCentreX(), area.getBottom() + 0.5f });
+                drawNeonBar (g, line, true);
+            }
+        }
+        g.setColour (colour);
+        g.drawFittedText (text, textArea, juce::Justification::centred, 1, 0.8f);
         return;
     }
 
@@ -393,6 +470,9 @@ void ParagonLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int 
                                            float sliderPos, float startAngle, float endAngle,
                                            juce::Slider& slider)
 {
+    if (slider.getProperties()[invisibleSliderProperty])
+        return;
+
     if (slider.getProperties()[pedalKnobProperty])
     {
         drawPedalKnob (g, juce::Rectangle<int> (x, y, width, height).toFloat(), startAngle + sliderPos * (endAngle - startAngle));
@@ -436,6 +516,54 @@ void ParagonLookAndFeel::drawLinearSlider (juce::Graphics& g, int x, int y, int 
                                           float sliderPos, float minSliderPos, float maxSliderPos,
                                           juce::Slider::SliderStyle style, juce::Slider& slider)
 {
+    if (style == juce::Slider::LinearVertical && slider.getProperties()[channelFaderProperty])
+    {
+        const auto centreX = (float) x + (float) width * 0.5f;
+        const auto top = (float) y, bottom = (float) (y + height);   // the cap's centre at either end
+
+        // The slot, reaching a little past the ends of the scale.
+        const auto slot = juce::Rectangle<float>::leftTopRightBottom (centreX - 6.0f, top - 16.0f, centreX + 6.0f, bottom + 14.0f);
+        g.setGradientFill (juce::ColourGradient (juce::Colour (0xff1e1c20), slot.getX(), 0.0f, juce::Colour (0xff000000), slot.getRight(), 0.0f, false));
+        g.fillRoundedRectangle (slot, 6.0f);
+        g.setColour (juce::Colours::white.withAlpha (0.35f));
+        g.drawRoundedRectangle (slot.translated (0.0f, 1.0f), 6.0f, 0.8f);
+        g.setColour (juce::Colours::black);
+        g.drawRoundedRectangle (slot, 6.0f, 1.0f);
+
+        // The cap: brushed chrome, concave (darker across its middle), with a
+        // red line at its centre for reading the level.
+        const auto cap = juce::Rectangle<float> (42.0f, (float) channelFaderThumbRadius * 2.0f).withCentre ({ centreX, sliderPos });
+        juce::Path outline;
+        outline.addRoundedRectangle (cap, 4.0f);
+        juce::DropShadow (juce::Colours::black.withAlpha (0.6f), 10, { 0, 5 }).drawForPath (g, outline);
+        juce::ColourGradient chrome (juce::Colour (0xfffdfcfd), 0.0f, cap.getY(), juce::Colour (0xff5e5b60), 0.0f, cap.getBottom(), false);
+        chrome.addColour (0.08, juce::Colour (0xffe6e3e7));
+        chrome.addColour (0.4, juce::Colour (0xffb1aeb3));
+        chrome.addColour (0.5, juce::Colour (0xff8a878c));
+        chrome.addColour (0.56, juce::Colour (0xffeeecef));
+        chrome.addColour (0.85, juce::Colour (0xffb5b2b7));
+        g.setGradientFill (chrome);
+        g.fillPath (outline);
+        juce::ColourGradient sides (juce::Colours::black.withAlpha (0.3f), cap.getX(), 0.0f, juce::Colours::black.withAlpha (0.3f), cap.getRight(), 0.0f, false);
+        sides.addColour (0.2, juce::Colours::transparentBlack);
+        sides.addColour (0.8, juce::Colours::transparentBlack);
+        g.setGradientFill (sides);
+        g.fillPath (outline);
+        g.setColour (juce::Colours::black.withAlpha (0.12f));
+        for (auto ridge = cap.getY() + 6.0f; ridge < cap.getBottom() - 4.0f; ridge += 4.0f)
+            if (std::abs (ridge - sliderPos) > 5.0f)
+                g.drawHorizontalLine (juce::roundToInt (ridge), cap.getX() + 3.0f, cap.getRight() - 3.0f);
+        g.setColour (juce::Colours::black.withAlpha (0.7f));
+        g.strokePath (outline, juce::PathStrokeType (1.0f));
+
+        const auto line = juce::Rectangle<float> (cap.getWidth() - 6.0f, 2.4f).withCentre ({ centreX, sliderPos });
+        g.setColour (ParagonColours::meterRed.withAlpha (0.35f));
+        g.fillRect (line.expanded (0.0f, 2.0f));
+        g.setColour (ParagonColours::meterRed);
+        g.fillRect (line);
+        return;
+    }
+
     if (style == juce::Slider::LinearVertical && slider.getProperties()[eqFaderProperty])
     {
         const auto centreX = (float) x + (float) width * 0.5f;
@@ -677,5 +805,96 @@ int ParagonLookAndFeel::getSliderThumbRadius (juce::Slider& slider)
 {
     if (slider.getProperties()[eqFaderProperty])
         return eqFaderThumbRadius;
+    if (slider.getProperties()[channelFaderProperty])
+        return channelFaderThumbRadius;
     return LookAndFeel_V4::getSliderThumbRadius (slider);
+}
+
+void ParagonLookAndFeel::drawIcon (juce::Graphics& g, const juce::String& icon, juce::Rectangle<float> area, juce::Colour colour, bool on)
+{
+    const auto size = juce::jmin (area.getWidth(), area.getHeight());
+    const auto c = area.getCentre();
+    const auto stroke = [&] (const juce::Path& path, float thickness, juce::Colour pathColour)
+    {
+        g.setColour (pathColour);
+        g.strokePath (path, juce::PathStrokeType (thickness, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    };
+
+    if (icon == "phase")
+    {
+        // Ø: a circle with a stroke through it.
+        juce::Path path;
+        const auto r = size * 0.36f;
+        path.addEllipse (juce::Rectangle<float> (r * 2.0f, r * 2.0f).withCentre (c));
+        path.startNewSubPath (c.translated (-r * 1.15f, r * 1.15f));
+        path.lineTo (c.translated (r * 1.15f, -r * 1.15f));
+        stroke (path, 2.0f, colour);
+        return;
+    }
+
+    if (icon == "shape")
+    {
+        // The band's curve, glowing orange as on the concept: a shelf (a
+        // step up), or a bell when on.
+        const auto box = juce::Rectangle<float> (juce::jmin (area.getWidth(), size * 2.6f), size * 0.6f).withCentre (c);
+        juce::Path curve;
+        curve.startNewSubPath (box.getX(), box.getBottom());
+        if (on)
+        {
+            curve.lineTo (box.getX() + box.getWidth() * 0.22f, box.getBottom());
+            curve.cubicTo (box.getCentreX() - box.getWidth() * 0.12f, box.getBottom(), box.getCentreX() - box.getWidth() * 0.1f, box.getY(), box.getCentreX(), box.getY());
+            curve.cubicTo (box.getCentreX() + box.getWidth() * 0.1f, box.getY(), box.getCentreX() + box.getWidth() * 0.12f, box.getBottom(), box.getRight() - box.getWidth() * 0.22f, box.getBottom());
+            curve.lineTo (box.getRight(), box.getBottom());
+        }
+        else
+        {
+            curve.lineTo (box.getX() + box.getWidth() * 0.3f, box.getBottom());
+            curve.cubicTo (box.getCentreX(), box.getBottom(), box.getCentreX() - box.getWidth() * 0.05f, box.getY(), box.getRight() - box.getWidth() * 0.3f, box.getY());
+            curve.lineTo (box.getRight(), box.getY());
+        }
+        const juce::Colour orange { 0xffffa040 };
+        stroke (curve, 4.5f, orange.withAlpha (0.25f));
+        stroke (curve, 2.0f, orange);
+        return;
+    }
+
+    if (icon == "left" || icon == "right")
+    {
+        const auto direction = icon == "left" ? -1.0f : 1.0f;
+        juce::Path chevron;
+        chevron.startNewSubPath (c.translated (-direction * size * 0.15f, -size * 0.3f));
+        chevron.lineTo (c.translated (direction * size * 0.15f, 0.0f));
+        chevron.lineTo (c.translated (-direction * size * 0.15f, size * 0.3f));
+        stroke (chevron, 2.2f, colour);
+        return;
+    }
+
+    if (icon == "dots")
+    {
+        g.setColour (colour);
+        for (int i = -1; i <= 1; ++i)
+            g.fillEllipse (juce::Rectangle<float> (4.0f, 4.0f).withCentre (c.translated ((float) i * 8.0f, 0.0f)));
+        return;
+    }
+
+    if (icon == "gear")
+    {
+        // Eight teeth round a ring.
+        juce::Path gear;
+        const auto outer = size * 0.46f, inner = size * 0.34f;
+        constexpr int teeth = 8;
+        for (int i = 0; i < teeth * 4; ++i)
+        {
+            const auto angle = juce::MathConstants<float>::twoPi * ((float) i - 0.5f) / (float) (teeth * 4);
+            const auto radius = (i % 4 == 1 || i % 4 == 2) ? outer : inner;
+            const juce::Point<float> point (c.x + std::sin (angle) * radius, c.y - std::cos (angle) * radius);
+            if (i == 0)
+                gear.startNewSubPath (point);
+            else
+                gear.lineTo (point);
+        }
+        gear.closeSubPath();
+        gear.addEllipse (juce::Rectangle<float> (size * 0.32f, size * 0.32f).withCentre (c));
+        stroke (gear, 1.8f, colour);
+    }
 }

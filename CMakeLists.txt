@@ -49,6 +49,7 @@ target_sources(ParagonPR7C
         source/PluginProcessor.cpp
         source/PluginEditor.cpp
         source/ui/MainView.cpp
+        source/ui/Controls.cpp
         source/ui/LevelMeter.cpp
         source/ui/Logo.cpp
         source/ui/LedDisplay.cpp

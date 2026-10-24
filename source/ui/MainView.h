@@ -3,26 +3,29 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 
 #include "PluginProcessor.h"
+#include "ui/Controls.h"
 #include "ui/LevelMeter.h"
 
 // Everything in the plugin window, on a fixed 1448 x 1086 canvas: the size
 // of the concept image (docs/concept.png), so positions here can be read
 // straight off it. The editor scales the whole view to the window.
 //
-// The seed: the header and footer, the five columns with each module's
-// place outlined and named, the meter window with working input and output
-// meters, and OUTPUT LEVEL. Each module replaces its outline as it's built
-// (see CLAUDE.md for the order).
-class MainView final : public juce::Component
+// Every module's panel is drawn with all its controls, placed as on the
+// concept. Most are inert until their module's DSP is built (see CLAUDE.md
+// for the order): each step attaches its controls to parameters, found by
+// their IDs here. Working now: INPUT, Ø, MUTE, OUTPUT TRIM, the fader, the
+// meters, and the finish (from the settings gear).
+class MainView final : public juce::Component,
+                       private juce::ChangeListener
 {
 public:
     explicit MainView (ParagonPR7CAudioProcessor&);
+    ~MainView() override;
 
     static constexpr int width = 1448;
     static constexpr int height = 1086;
 
     void paint (juce::Graphics&) override;
-    void resized() override;
 
     // A module's place on the canvas, read off the concept, and its name.
     struct Module
@@ -32,10 +35,45 @@ public:
     };
     static const std::vector<Module>& modules();
 
+    // Every control, by ID: "<module>.<control>" ("comp.ratio", "hf.on").
+    // Knobs are Knob, lamps Led, switches LeverSwitch, the rest TextButton.
+    juce::Component* findControl (const juce::String& id) const;
+    const std::map<juce::String, juce::Component*>& getControls() const noexcept { return controls; }
+
+    // The meter window's four level meters (IN L, IN R, OUT L, OUT R).
+    std::array<LevelMeter*, 4> getLevelMeters() noexcept { return { &inputLeft, &inputRight, &outputLeft, &outputRight }; }
+    juce::Button& getPeakHoldReset() noexcept { return peakReset; }
+
 private:
+    void changeListenerCallback (juce::ChangeBroadcaster*) override;   // the finish changed
+
+    Knob& addKnob (const juce::String& id, juce::Point<float> centre, float ringRadius, std::vector<juce::String> scale,
+                   juce::String unit, juce::String caption, double initial, const juce::String& tooltip);
+    juce::TextButton& addButton (const juce::String& id, const juce::String& text, juce::Rectangle<int> bounds,
+                                 bool toggles, const juce::String& tooltip);
+    Led& addLed (const juce::String& id, juce::Point<float> centre, const juce::String& tooltip);
+    LeverSwitch& addSwitch (const juce::String& id, juce::Rectangle<int> bounds, int positions, int initial, bool glow,
+                            const juce::String& tooltip);
+    void addRadioGroup (std::initializer_list<const char*> ids, int group, const char* initiallyOn);
+
+    void showSettingsMenu();
+
+    ParagonPR7CAudioProcessor& processor;
+    juce::OwnedArray<juce::Component> ownedControls;
+    std::map<juce::String, juce::Component*> controls;
+
     LevelMeter inputLeft, inputRight, outputLeft, outputRight;
-    juce::Slider outputLevel { juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow };
-    juce::AudioProcessorValueTreeState::SliderAttachment outputLevelAttachment;
+    RoundButton peakReset;
+    juce::OwnedArray<GainReductionMeter> reductionMeters;
+    juce::Slider fader { juce::Slider::LinearVertical, juce::Slider::NoTextBox };
+
+    using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
+    using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
+    std::unique_ptr<SliderAttachment> inputAttachment, trimAttachment, faderAttachment;
+    std::unique_ptr<ButtonAttachment> phaseAttachment, muteAttachment;
+
+    // The satin grain over the panels, made for the current finish.
+    juce::Image grain;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainView)
 };

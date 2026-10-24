@@ -10,13 +10,15 @@
 
 Unlike PR7-B and PR7-V, it is **not** a copy of PR7-G. It was seeded lean: PR7-G's build, release and test setup, its look-and-feel pieces, and an empty true-stereo processor. Read this file, then look at **`docs/concept.png`**, the owner's concept design. The UI is built to match it.
 
-## What's here (the seed, 0.1.0)
+## What's here
 
 - **The plugin:** true stereo (stereo in/out, or mono in/out on a mono track).
   - Its own identity: `Paragon PR7-C`, plugin code `Pr7c`, bundle `com.paragon.paragonpr7c`, maker code `Prgn`.
-  - One parameter, `outputLevel`, plus input and output peak meters.
+  - Parameters: `inputGain`, `outputTrim`, `outputLevel` (the fader), `phaseInvert`, `mute`. Input and output peak meters, and gain-reduction sources (`getGainReduction`) for the GR meters, which stay at 0 until the dynamics exist.
 - **`source/ui/MainView`:** a fixed **1448 × 1086** canvas, exactly the concept image's size, so coordinates can be read straight off `docs/concept.png`. The editor scales it to the window.
-  - `MainView::modules()` holds every module's rectangle, measured off the concept and drawn as dashed placeholders. Each module replaces its placeholder as it's built.
+  - **Step 1 is done:** every module's panel is drawn with all its controls, placed as on the concept. `MainView::modules()` holds each module's rectangle.
+  - Controls are registered by ID (`"comp.ratio"`, `"hf.on"`...; see `MainView.cpp`). Most are **inert** (not attached to parameters; tooltips say which step brings them). Each step creates the parameters and attaches its controls, replacing the knob's provisional printed scale with the real one.
+  - `source/ui/Controls`: `Knob` (draws itself; its slider only takes the mouse over the knob), `Led`, `LeverSwitch`, `RoundButton`, `GainReductionMeter`. Buttons are `TextButton`s with `ParagonLookAndFeel::consoleButtonProperty`.
 - **Carried over from PR7-G:**
   - `ParagonLookAndFeel` (Inter fonts, knobs, LED/neon bars, piano keys, chrome bezels).
   - `Finish` (Pearl White / White + Neon / Pearl Black finishes and the satin grain). Its settings file is "Paragon PR7-C".
@@ -123,17 +125,34 @@ One module at a time. Each step is built, tested and **rendered**, and the owner
 7. **Stereo features:** mono maker, stereo width, stereo modes.
 8. **Presets, A/B and the header.** *Ask the owner where this fits.*
 
-## Open questions: ask the owner, don't guess
+## Owner decisions (step 1)
 
-- **GATE:** the concept has both an **ATTACK knob** and **FAST / MED / SLOW** buttons. What does each do?
-- **OUTPUT:** there's **OUTPUT LEVEL** at the top, and **OUTPUT TRIM** plus a **fader** lower down. Should the top one be an **INPUT** gain, as on the reference console? How do trim and fader differ?
-- **V GAIN:** the scale reads -15 to +15 dB on the concept. Is it a noise level, or an input "drive" gain?
-- **STEREO MODE:** exactly what ANALOG, RANDOM CH., ONE and ALL do, and whether there's a "same channel both sides" mode.
-- **External sidechain:** does the gate/comp need a key input from another track?
-- **Finish:** should PR7-C offer the family's Pearl White / White + Neon / Pearl Black finishes for its panels? The concept looks like light brushed metal.
-- **Presets:** factory presets (vocals, drums, bass, mix bus...)? A/B, copy/paste?
+Answered by the owner before step 1. Follow these; they override the module notes above where they differ.
 
-## Names
+- **GATE:** the ATTACK knob sets attack; **FAST / MED / SLOW** pick the hold-and-release character (our design). *Being reconsidered: see "Reference research" below.*
+- **IN / OUT column:** the top knob is **INPUT** (-24 to +12 dB, 0 dB at the top of the knob), before everything. **OUTPUT TRIM** (±12 dB) is a fine output level, and the **fader** (+10 to -60 dB, ID `outputLevel`) is the final level. All three work, with Ø and MUTE.
+- **V GAIN:** both a drive into the console colour and the console's noise. *Being reconsidered: see below.*
+- **Finish:** the family finishes only (Pearl White default, White + Neon, Pearl Black), chosen from the settings gear. No brushed metal.
+- **Stereo mode:** ANALOG (left and right use different channels) and **DIGITAL** (both use the left channel). Under RANDOM CH.: **ONE** re-rolls this instance to an unused channel; **ALL** re-rolls every PR7-C in the session. Default: channels 1 / 2, ANALOG.
+- **Sidechain:** internal only, no external key.
+- **Presets:** factory presets and user presets (SAVE). **No A/B** and no copy/paste, so A/B is left off the header.
+- **Meters:** IN (L, R) and OUT (L, R) shown side by side, as drawn. The round button between them resets the peak-hold marks. **0 on the scale is 0 dBFS** (DAW style), +24 to -60 dB. *Being reconsidered: see below.*
+
+## Reference research (owner-supplied, 2026-10-24)
+
+The owner supplied a research summary of the reference plugin's manual. It is **not** in the repo (it's full of the reference's trade names). Points where the reference differs from the concept, **awaiting the owner's decision**:
+
+- Gate: FAST / MED / SLOW are the gate's **attack**; there's no attack knob. The RATIO knob becomes **HOLD** in gate mode. There's an **INV** (inverted gate) button. Range 0 to 100 dB, release about 1 ms to 10 s.
+- Compressor: **SOFT** knee at the bottom of RATIO, then 1.1:1 to ∞:1. A single **TIMING** knob (RMS window, about 70 to 1.2 ms) instead of attack/release. Plus **MAKE UP**, **MIX** and an "ambience" listen (dry minus compressed). VCA / OPTO / FET is our own idea.
+- Limiter: peak-detected, no look-ahead documented. Our BRICK / SOFT / AUTO are our own.
+- VCA clip: an on switch plus a **HEADROOM** knob (-24 to +12 dB; 0 dB = the hardware's soft clip, +12 = clean).
+- EQ: **five** bands (adds **LF**); every band has Q; HF, HMF, LMF and LF become shelves with Q fully down; MF is always a bell. Plus EQ IN, AUTO LISTEN, INVERT, PRE / POST / SC routing and GAIN SCALE (0 to 200%). The concept's blank plate under LMF could hold LF.
+- V GAIN is **noise only** (off to audible); THD is the density.
+- Mono maker 20 Hz to **2 kHz**; stereo width 0 to **400%**; there's a PAN knob; the fader goes down to **-∞**.
+- Meters: the reference meters read console levels (0 dBu = -20 dBFS), which is why the scale reaches +24. Plus an overload lamp.
+- SC LINK links gate, compressor and limiter (ours is on the limiter only).
+
+## Names## Names
 
 **No trademarked names or branding** on our modules or controls. Don't use:
 - the console's or the plugin maker's names;
