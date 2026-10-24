@@ -67,6 +67,31 @@ public:
     static constexpr const char* eqFaderProperty = "eqFader";
     static constexpr int eqFaderThumbRadius = 7;
 
+    // Set this on a slider that something else draws (a Knob draws its own
+    // knob and only uses the slider for dragging), so it paints nothing.
+    static constexpr const char* invisibleSliderProperty = "invisibleSlider";
+
+    // Set this on a TextButton to draw it as one of the channel strip's dark
+    // keys (VCA / OPTO / FET, EXP, SAVE...). When its toggle state is on, its
+    // lettering lights orange with a neon line under it (red with
+    // alertProperty, for MUTE).
+    static constexpr const char* consoleButtonProperty = "consoleButton";
+    static constexpr const char* alertProperty = "alert";
+    // On a console button: draw a small icon instead of its text. One of
+    // "phase" (Ø), "shape" (a shelf curve when on, a bell when off), "left",
+    // "right", "dots" or "gear".
+    static constexpr const char* iconProperty = "icon";
+    // On a console button: an LED that lights with it, left of its text
+    // (LINK), or in its middle when it has none (LISTEN, HIGH Q).
+    static constexpr const char* ledProperty = "led";
+    // On a console button: no key, just its icon (the header's arrows and gear).
+    static constexpr const char* bareProperty = "bare";
+
+    // Set this on a vertical slider to draw it as the channel's output
+    // fader: a black slot and a chrome cap with a red line across it.
+    static constexpr const char* channelFaderProperty = "channelFader";
+    static constexpr int channelFaderThumbRadius = 34;   // half the cap's height
+
     // Every font in the plugin is Inter, built in: semibold for bold text,
     // and the heavy display italic for bold italic (the PARAGON badge).
     juce::Typeface::Ptr getTypefaceForFont (const juce::Font&) override;
@@ -108,6 +133,9 @@ public:
     // draws it pink to red to orange (the pearl black unit's keys).
     static void drawPianoKey (juce::Graphics&, juce::Rectangle<float> area, float radius, float bevel,
                               bool pressed, bool highlighted, bool neon = false);
+
+    // A console button's icon (see iconProperty), in `colour`.
+    static void drawIcon (juce::Graphics&, const juce::String& icon, juce::Rectangle<float> area, juce::Colour colour, bool on);
 
     // The mockup's LED bars: when lit, a neon tube (white-hot core inside a
     // red-orange outline, with a soft glow); when off, a dimmer solid red.

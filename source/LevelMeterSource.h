@@ -28,3 +28,24 @@ public:
 private:
     std::atomic<float> peak { 0.0f };
 };
+
+// Hands a dynamics module's gain reduction (in dB, positive) from the audio
+// thread to its GR meter, the same way: the audio thread calls push() every
+// block, and the UI's takeReduction() returns the most since the last call.
+class GainReductionSource
+{
+public:
+    void push (float reductionDb) noexcept
+    {
+        auto current = most.load (std::memory_order_relaxed);
+        while (reductionDb > current
+               && ! most.compare_exchange_weak (current, reductionDb, std::memory_order_relaxed))
+        {
+        }
+    }
+
+    float takeReduction() noexcept { return most.exchange (0.0f, std::memory_order_relaxed); }
+
+private:
+    std::atomic<float> most { 0.0f };
+};
