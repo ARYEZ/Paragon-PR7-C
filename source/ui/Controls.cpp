@@ -357,9 +357,11 @@ void GainReductionMeter::timerCallback()
     constexpr auto fallDbPerTick = 30.0f / 30.0f;   // returns at 30 dB a second
     const auto reduction = juce::jlimit (0.0f, rangeDb, source.takeReduction());
     const auto newDb = juce::jmax (reduction, displayedDb - fallDbPerTick);
-    if (! juce::approximatelyEqual (newDb, displayedDb))
+    const auto newMakeUp = makeUp != nullptr ? juce::jlimit (0.0f, rangeDb, makeUp->load()) : 0.0f;
+    if (! juce::approximatelyEqual (newDb, displayedDb) || ! juce::approximatelyEqual (newMakeUp, displayedMakeUp))
     {
         displayedDb = newDb;
+        displayedMakeUp = newMakeUp;
         repaint();
     }
 }
@@ -404,6 +406,6 @@ void GainReductionMeter::paint (juce::Graphics& g)
         const auto x = bounds.getCentreX() + (float) i * pitch;
         const auto db = rangeDb * ((float) (i < 0 ? -i : i + 1) - 0.5f) / (float) half;
         const auto segment = juce::Rectangle<float> (x + 0.8f, bounds.getY() + 1.0f, pitch - 1.8f, bounds.getHeight() - 2.0f);
-        drawSegment (segment, amber, i < 0 && db <= displayedDb);
+        drawSegment (segment, amber, i < 0 ? db <= displayedDb : db <= displayedMakeUp);
     }
 }

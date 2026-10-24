@@ -23,6 +23,10 @@ ParagonPR7CAudioProcessor::ParagonPR7CAudioProcessor()
                               parameters.getRawParameterValue (ParamIDs::eqGain (id)), parameters.getRawParameterValue (ParamIDs::eqQ (id)),
                               parameters.getRawParameterValue (ParamIDs::eqShelf (id)) };   // the one the band doesn't have is null
     }
+    const auto raw = [this] (const char* id) { return parameters.getRawParameterValue (id); };
+    compParameters = { raw (ParamIDs::compOn), raw (ParamIDs::compThreshold), raw (ParamIDs::compRatio), raw (ParamIDs::compAttack),
+                       raw (ParamIDs::compRelease), raw (ParamIDs::compAuto), raw (ParamIDs::compMakeUp), raw (ParamIDs::compCharacter),
+                       raw (ParamIDs::dynamicsLink) };
 }
 
 bool ParagonPR7CAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -34,8 +38,12 @@ bool ParagonPR7CAudioProcessor::isBusesLayoutSupported (const BusesLayout& layou
     return layouts.getMainInputChannelSet() == output;
 }
 
-void ParagonPR7CAudioProcessor::prepareToPlay (double sampleRate, int)
+void ParagonPR7CAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
+    maxBlockSize = juce::jmax (1, samplesPerBlock);
+    sidechain.setSize (2, maxBlockSize);
+    compressor.prepare (sampleRate, maxBlockSize);
+    filtersSidechain.prepare (sampleRate);
     for (auto* gain : { &inputGain, &outputGain })
         gain->reset (sampleRate, 0.02);
     inputGain.setCurrentAndTargetValue (juce::Decibels::decibelsToGain (inputGainDb->load()));
@@ -95,11 +103,46 @@ void ParagonPR7CAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
     applyGain (buffer, inputGain, numSamples);
     pushMeters (inputMeters, buffer, numSamples);
 
-    // The modules, in their fixed order (see CLAUDE.md).
-    constexpr int filtersAtInput = 0, filtersAfterDynamics = 1;   // the IN / POST / SC switch's positions
+    // The modules, in stretches no longer than the block size we were
+    // prepared for (their working buffers are that size). Unprepared, they're
+    // skipped.
+    for (int start = 0; maxBlockSize > 0 && start < numSamples; start += maxBlockSize)
+    {
+        const auto length = juce::jmin (maxBlockSize, numSamples - start);
+        juce::AudioBuffer<float> stretch (buffer.getArrayOfWritePointers(), buffer.getNumChannels(), start, length);
+        processModules (stretch, length);
+    }
+
+    outputGain.setTargetValue (targetOutputGain());
+    applyGain (buffer, outputGain, numSamples);
+    pushMeters (outputMeters, buffer, numSamples);
+}
+
+void ParagonPR7CAudioProcessor::processModules (juce::AudioBuffer<float>& buffer, int numSamples) noexcept
+{
+    // In their fixed order (see CLAUDE.md).
+    constexpr int filtersAtInput = 0, filtersAfterDynamics = 1, filtersInSidechain = 2;   // the IN / POST / SC switch's positions
     filtersIn.process (buffer, numSamples, filterSettings (filtersAtInput));
 
-    // GATE / EXP and COMP will go here.
+    // GATE / EXP will go here.
+
+    // What the dynamics listen to: the audio here, through the HPF / LPF
+    // when they're set to SC.
+    for (int channel = 0; channel < 2; ++channel)
+        sidechain.copyFrom (channel, 0, buffer, juce::jmin (channel, buffer.getNumChannels() - 1), 0, numSamples);
+    juce::AudioBuffer<float> detector (sidechain.getArrayOfWritePointers(), 2, 0, numSamples);
+    filtersSidechain.process (detector, numSamples, filterSettings (filtersInSidechain));
+
+    const auto& c = compParameters;
+    compressor.process (buffer, detector, numSamples,
+                        { c.on->load() >= 0.5f, c.threshold->load(), c.ratio->load(), c.attack->load(), c.release->load(),
+                          c.autoRelease->load() >= 0.5f, c.makeUp->load(),
+                          (effects::Compressor::Character) juce::jlimit (0, 2, juce::roundToInt (c.character->load())),
+                          c.link->load() >= 0.5f });
+    for (int channel = 0; channel < 2; ++channel)
+        getGainReduction (Dynamics::comp, channel).push (compressor.getReductionDb (channel));
+    compGainChange.push (juce::jmax (compressor.getReductionDb (0), compressor.getReductionDb (1)));
+    compMakeUpShown.store (c.on->load() >= 0.5f ? c.makeUp->load() : 0.0f);
 
     for (size_t i = 0; i < eqBands.size(); ++i)
     {
@@ -111,10 +154,6 @@ void ParagonPR7CAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
     filtersPost.process (buffer, numSamples, filterSettings (filtersAfterDynamics));
 
     // LIMIT, SATURATION, the console colour and the stereo tools will go here.
-
-    outputGain.setTargetValue (targetOutputGain());
-    applyGain (buffer, outputGain, numSamples);
-    pushMeters (outputMeters, buffer, numSamples);
 }
 
 void ParagonPR7CAudioProcessor::pushMeters (std::array<LevelMeterSource, 2>& meters, const juce::AudioBuffer<float>& buffer, int numSamples) noexcept

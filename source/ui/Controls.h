@@ -116,10 +116,14 @@ public:
     static constexpr float rangeDb = 20.0f;
     float getDisplayedReduction() const noexcept { return displayedDb; }
 
+    // A gain-change meter's make-up gain (dB), lit rightwards from the centre.
+    void setMakeUpSource (const std::atomic<float>* makeUpDb) noexcept { makeUp = makeUpDb; }
+
 private:
     void timerCallback() override;
 
     GainReductionSource& source;
     Style style;
-    float displayedDb = 0.0f;
+    float displayedDb = 0.0f, displayedMakeUp = 0.0f;
+    const std::atomic<float>* makeUp = nullptr;
 };

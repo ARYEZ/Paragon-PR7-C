@@ -254,3 +254,53 @@ TEST_CASE ("The HPF / LPF and EQ controls work their parameters", "[ui]")
     setParameter (processor, ParamIDs::hpfOn, 1.0f);
     CHECK (hpf->getToggleState());
 }
+
+TEST_CASE ("The VCA / OPTO / FET keys pick the compressor's character", "[ui]")
+{
+    ParagonPR7CAudioProcessor processor;
+    std::unique_ptr<juce::AudioProcessorEditor> editor (processor.createEditor());
+    auto& view = viewOf (*editor);
+    auto* vca = dynamic_cast<juce::Button*> (view.findControl ("comp.vca"));
+    auto* fet = dynamic_cast<juce::Button*> (view.findControl ("comp.fet"));
+    REQUIRE ((vca != nullptr && fet != nullptr));
+    CHECK (vca->getToggleState());
+
+    fet->onClick();   // what a click does (triggerClick() would only queue it)
+    CHECK (juce::roundToInt (processor.getParameters().getRawParameterValue (ParamIDs::compCharacter)->load()) == 2);
+
+    setParameter (processor, ParamIDs::compCharacter, 1.0f);   // the host picks OPTO
+    CHECK (! vca->getToggleState());
+    CHECK (! fet->getToggleState());
+    CHECK (dynamic_cast<juce::Button*> (view.findControl ("comp.opto"))->getToggleState());
+}
+
+TEST_CASE ("COMP's gain-change meter and the meter window's COMP meters all see the reduction", "[ui]")
+{
+    ParagonPR7CAudioProcessor processor;
+    processor.prepareToPlay (48000.0, 256);
+    std::unique_ptr<juce::AudioProcessorEditor> editor (processor.createEditor());
+    setParameter (processor, ParamIDs::compOn, 1.0f);
+    setParameter (processor, ParamIDs::compThreshold, -40.0f);
+    setParameter (processor, ParamIDs::compMakeUp, 6.0f);
+
+    juce::AudioBuffer<float> buffer (2, 256);
+    juce::MidiBuffer midi;
+    for (int round = 0; round < 8; ++round)
+    {
+        for (int i = 0; i < 256; ++i)
+            for (int channel = 0; channel < 2; ++channel)
+                buffer.setSample (channel, i, 0.5f * std::sin ((float) (round * 256 + i) * 0.13f));
+        processor.processBlock (buffer, midi);
+        runTimers (40);
+    }
+
+    std::vector<GainReductionMeter*> meters;
+    for (auto* child : viewOf (*editor).getChildren())
+        if (auto* meter = dynamic_cast<GainReductionMeter*> (child))
+            meters.push_back (meter);
+    REQUIRE (meters.size() == 7);   // gate, comp and limit, L and R; and COMP's own
+    CHECK (meters[2]->getDisplayedReduction() > 10.0f);   // the meter window's COMP L
+    CHECK (meters[3]->getDisplayedReduction() > 10.0f);   // COMP R
+    CHECK (meters[6]->getDisplayedReduction() > 10.0f);   // COMP's gain-change meter
+    CHECK (meters[0]->getDisplayedReduction() == 0.0f);   // no gate yet
+}

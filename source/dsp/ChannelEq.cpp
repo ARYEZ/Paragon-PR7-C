@@ -24,6 +24,7 @@ namespace effects
     {
         for (auto& filter : filters)
             filter.reset();
+        fresh = true;
     }
 
     float EqBand::proportionalQ (float knobQ, float gain) noexcept
@@ -43,6 +44,16 @@ namespace effects
     void EqBand::process (juce::AudioBuffer<float>& buffer, int numSamples, const Settings& settings) noexcept
     {
         const auto bandQ = shelfType == Shelf::none ? settings.q : fixedBellQ;   // shelves ignore Q
+        if (fresh)
+        {
+            // Playback is starting: be at the settings from the first sample.
+            fresh = false;
+            frequency.setCurrentAndTargetValue (settings.frequency);
+            q.setCurrentAndTargetValue (bandQ);
+            gainDb.setCurrentAndTargetValue (settings.on ? settings.gainDb : 0.0f);
+            shapeFade.setCurrentAndTargetValue (1.0f);
+            isShelf = shelfType != Shelf::none && settings.shelf;
+        }
         if (! gainDb.isSmoothing() && juce::exactlyEqual (gainDb.getCurrentValue(), 0.0f))
         {
             // Silent: no need to glide to the new frequency and Q.
@@ -112,10 +123,20 @@ namespace effects
         for (auto* filter : { &highPass, &lowPass })
             for (auto& biquad : filter->biquads)
                 biquad.reset();
+        fresh = true;
     }
 
     void CutFilters::process (juce::AudioBuffer<float>& buffer, int numSamples, const Settings& settings) noexcept
     {
+        if (fresh)
+        {
+            // Playback is starting: be at the settings from the first sample.
+            fresh = false;
+            highPass.frequency.setCurrentAndTargetValue (settings.highPassFrequency);
+            highPass.wet.setCurrentAndTargetValue (settings.highPass ? 1.0f : 0.0f);
+            lowPass.frequency.setCurrentAndTargetValue (settings.lowPassFrequency);
+            lowPass.wet.setCurrentAndTargetValue (settings.lowPass ? 1.0f : 0.0f);
+        }
         process (highPass, true, buffer, numSamples, settings.highPass, settings.highPassFrequency);
         process (lowPass, false, buffer, numSamples, settings.lowPass, settings.lowPassFrequency);
     }

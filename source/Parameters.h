@@ -27,6 +27,19 @@ namespace ParamIDs
     inline const juce::String eqGain (const juce::String& band) { return band + "Gain"; }
     inline const juce::String eqQ (const juce::String& band) { return band + "Q"; }
     inline const juce::String eqShelf (const juce::String& band) { return band + "Shelf"; }
+
+    // COMP.
+    inline constexpr auto compOn = "compOn";
+    inline constexpr auto compThreshold = "compThreshold";   // dBFS
+    inline constexpr auto compRatio = "compRatio";           // 1 = SOFT, 30 = infinite
+    inline constexpr auto compAttack = "compAttack";         // ms
+    inline constexpr auto compRelease = "compRelease";       // ms
+    inline constexpr auto compAuto = "compAuto";
+    inline constexpr auto compMakeUp = "compMakeUp";         // dB
+    inline constexpr auto compCharacter = "compCharacter";   // choice: VCA, OPTO, FET
+
+    // LINK, on the LIMIT panel: links the gate, compressor and limiter.
+    inline constexpr auto dynamicsLink = "dynamicsLink";
 }
 
 namespace ParamRanges
@@ -57,6 +70,16 @@ namespace ParamRanges
         bool hasQ;              // HMF, MF: a Q knob; the others switch shelf / bell
         bool shelfByDefault;
     };
+    inline constexpr float compThresholdMin = -50.0f, compThresholdMax = 0.0f;
+    inline constexpr float compAttackMin = 0.1f, compAttackMax = 30.0f;          // ms
+    inline constexpr float compReleaseMin = 50.0f, compReleaseMax = 3000.0f;     // ms
+    inline constexpr float compMakeUpMax = 20.0f;
+    inline const juce::StringArray compCharacters { "VCA", "OPTO", "FET" };    // saved by index: only append
+
+    // RATIO's printed marks, evenly spaced round the knob: SOFT (1), then
+    // 1.5:1 to infinite (30). The travel between marks is even in log ratio.
+    inline constexpr float compRatioMarks[] = { 1.0f, 1.5f, 2.0f, 4.0f, 10.0f, 30.0f };
+
     inline constexpr EqBandSpec eqBands[] {
         { "hf",  "HF",  2000.0f, 20000.0f, 10000.0f, false, true },
         { "hmf", "HMF", 400.0f,  5000.0f,  2500.0f,  true,  false },

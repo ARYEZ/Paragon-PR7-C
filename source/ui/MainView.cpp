@@ -189,13 +189,13 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
     auto& ratio = addKnob ("comp.ratio", P (556, 185), 37, {}, {}, "RATIO", 0.4,
                            later ("Compressor ratio. At SOFT, the ratio rises gently with the level: light on quiet parts, firmer on peaks", compStep));
     ratio.setScale ({ { 0.0f, "SOFT" }, { 0.2f, "1.5" }, { 0.4f, "2" }, { 0.6f, "4" }, { 0.8f, "10" }, { 1.0f, juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x9e")) } });
-    addButton ("comp.vca", "VCA", R (368, 268, 78, 30), true, later ("VCA: clean, precise, hard knee", compStep));
-    addButton ("comp.opto", "OPTO", R (448, 268, 78, 30), true, later ("OPTO: slow, programme-dependent, smooth release", compStep));
-    addButton ("comp.fet", "FET", R (528, 268, 78, 30), true, later ("FET: fast and aggressive, adds harmonics", compStep));
+    addButton ("comp.vca", "VCA", R (368, 268, 78, 30), true, "VCA: clean and precise. Follows the loudness, with a near-hard knee");
+    addButton ("comp.opto", "OPTO", R (448, 268, 78, 30), true, "OPTO: smooth. A wide soft knee, a gentler attack, and a release that stretches the longer it works");
+    addButton ("comp.fet", "FET", R (528, 268, 78, 30), true, "FET: fast and aggressive. Catches every transient, and adds a little grit the harder it works");
     addRadioGroup ({ "comp.vca", "comp.opto", "comp.fet" }, 2, "comp.vca");
     addKnob ("comp.attack", P (395, 372), 26, { "0.1", "1", "30" }, {}, "ATTACK", 0.5, later ("Compressor attack (ms)", compStep));
     addKnob ("comp.release", P (485, 372), 26, { "0.1", "1", "3" }, {}, "RELEASE", 0.5, later ("Compressor release (s)", compStep));
-    addLed ("comp.auto", { 530, 333 }, later ("AUTO: programme-dependent release", compStep)).setToggleState (false, juce::dontSendNotification);
+    addLed ("comp.auto", { 474, 326 }, later ("AUTO: programme-dependent release", compStep)).setToggleState (false, juce::dontSendNotification);
     addKnob ("comp.makeup", P (575, 372), 26, { "0", "10", "20" }, {}, "MAKE UP", 0.0, later ("Make-up gain (dB): brings the level back up after compressing", compStep));
 
     // LIMIT.
@@ -293,7 +293,8 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
         }
     }
     {
-        auto* meter = reductionMeters.add (new GainReductionMeter (processor.getGainReduction (Dynamics::comp, 0), GainReductionMeter::Style::gainChange));
+        auto* meter = reductionMeters.add (new GainReductionMeter (processor.getCompGainChange(), GainReductionMeter::Style::gainChange));
+        meter->setMakeUpSource (&processor.getCompMakeUp());
         meter->setBounds (386, 458, 204, 15);
         addAndMakeVisible (meter);
     }
@@ -383,6 +384,28 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
         }
     }
 
+    // COMP and LINK (step 3).
+    const auto infinity = juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x9e"));
+    attachButton ("comp.on", ParamIDs::compOn, "Compressor on/off");
+    attachKnob ("comp.threshold", ParamIDs::compThreshold,
+                { { -50.0f, "-50" }, { -40.0f, "-40" }, { -30.0f, "-30" }, { -20.0f, "-20" }, { -10.0f, "-10" }, { 0.0f, "0" } },
+                "Threshold (dBFS): the level above which it starts turning the sound down");
+    attachKnob ("comp.ratio", ParamIDs::compRatio,
+                { { 1.0f, "SOFT" }, { 1.5f, "1.5" }, { 2.0f, "2" }, { 4.0f, "4" }, { 10.0f, "10" }, { 30.0f, infinity } },
+                "Ratio: how hard it turns down what's over the threshold. SOFT rises with level: gentle on quiet "
+                "parts (about 3:1), firmer on peaks (6:1 and more). At the top it's a limiter.");
+    attachChoice ({ "comp.vca", "comp.opto", "comp.fet" }, ParamIDs::compCharacter);
+    attachKnob ("comp.attack", ParamIDs::compAttack, { { 0.1f, "0.1" }, { 1.0f, "1" }, { 30.0f, "30" } },
+                "Attack (ms): how quickly it clamps down. Slower lets the start of each note punch through.");
+    attachKnob ("comp.release", ParamIDs::compRelease, { { 100.0f, "0.1" }, { 1000.0f, "1" }, { 3000.0f, "3" } },
+                "Release (s): how quickly it lets go");
+    attachButton ("comp.auto", ParamIDs::compAuto,
+                  "AUTO release: lets go quickly after a short peak and slowly after long compression, so it doesn't pump");
+    attachKnob ("comp.makeup", ParamIDs::compMakeUp, { { 0.0f, "0" }, { 10.0f, "10" }, { 20.0f, "20" } },
+                "Make up (dB): brings the level back up after compressing");
+    attachButton ("dynamics.link", ParamIDs::dynamicsLink,
+                  "LINK: the gate, compressor and limiter turn both channels down together, from the louder one, so the stereo image stays put");
+
     // The header.
     addButton ("preset.previous", {}, R (522, 24, 32, 32), false, later ("The previous preset", presetStep))
         .getProperties().set (ParagonLookAndFeel::iconProperty, "left");
@@ -457,6 +480,25 @@ void MainView::attachSwitch (const juce::String& controlId, const juce::String& 
     attachment->sendInitialUpdate();
     switchAttachments.push_back (std::move (attachment));
     lever->setTooltip (tooltip);
+}
+
+void MainView::attachChoice (std::initializer_list<const char*> controlIds, const juce::String& parameterId)
+{
+    auto* parameter = processor.getParameters().getParameter (parameterId);
+    jassert (parameter != nullptr);
+    std::vector<juce::Button*> keys;
+    for (const auto* id : controlIds)
+        keys.push_back (dynamic_cast<juce::Button*> (findControl (id)));
+
+    auto attachment = std::make_unique<juce::ParameterAttachment> (*parameter, [keys] (float value)
+    {
+        for (size_t i = 0; i < keys.size(); ++i)
+            keys[i]->setToggleState ((int) i == juce::roundToInt (value), juce::dontSendNotification);
+    });
+    for (size_t i = 0; i < keys.size(); ++i)
+        keys[i]->onClick = [raw = attachment.get(), i] { raw->setValueAsCompleteGesture ((float) i); };
+    attachment->sendInitialUpdate();
+    switchAttachments.push_back (std::move (attachment));
 }
 
 juce::Component* MainView::findControl (const juce::String& id) const
@@ -636,7 +678,7 @@ void MainView::paint (juce::Graphics& g)
     drawStamped (g, "LINEAR", { 180.0f, 676.0f, 66.0f, 14.0f }, 12.0f, juce::Justification::centredRight);
     drawStamped (g, "LISTEN", { 127.0f, 935.0f, 70.0f, 16.0f }, 13.5f, juce::Justification::centredLeft);
     drawStamped (g, "HIGH Q", { 236.0f, 935.0f, 70.0f, 16.0f }, 13.5f, juce::Justification::centredLeft);
-    drawStamped (g, "AUTO", { 504.0f, 346.0f, 52.0f, 14.0f }, 11.0f);
+    drawStamped (g, "AUTO", { 489.0f, 319.0f, 40.0f, 14.0f }, 11.0f, juce::Justification::centredLeft);
     drawStamped (g, "LEFT", { 965.0f, 318.0f, 77.0f, 16.0f }, 13.0f);
     drawStamped (g, "RIGHT", { 1129.0f, 318.0f, 77.0f, 16.0f }, 13.0f);
     drawStamped (g, "RANDOM CH.", { 1235.0f, 500.0f, 190.0f, 16.0f }, 12.5f);

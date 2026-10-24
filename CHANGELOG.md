@@ -2,6 +2,17 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## Unreleased
+
+- **The compressor works.**
+  - THRESHOLD, and a RATIO from **SOFT** up to ∞. SOFT squeezes gently on quiet parts and firmer on peaks.
+  - **ATTACK**, **RELEASE** and **MAKE UP**, and **AUTO**, which lets go quickly after short peaks and slowly after long compression, so it doesn't pump.
+  - Three characters: **VCA** (clean and precise), **OPTO** (smooth, with a soft knee and a release that stretches the longer it works) and **FET** (fast and aggressive, with a touch of grit when it works hard). These are our own designs, not copies of any particular unit.
+  - **LINK** (on by default) turns both sides down together, so the stereo image stays put.
+  - With the HPF / LPF switch on **SC**, the compressor listens through the filters, so a big kick drum doesn't make the whole mix duck. The audio itself isn't filtered.
+  - The **COMP** meters in the meter window show how much it's turning down. The meter under COMP shows the reduction on the left and the make-up gain on the right.
+- **Fixed:** at the start of playback, the filters and EQ faded in over a few milliseconds instead of starting at their settings.
+
 ## 0.2.0
 
 **Still to come:** the compressor, limiter, gate, saturation, console colour, stereo tools and presets. Their controls are on the panel but don't do anything yet.

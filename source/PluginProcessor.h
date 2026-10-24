@@ -5,11 +5,12 @@
 #include "LevelMeterSource.h"
 #include "Parameters.h"
 #include "dsp/ChannelEq.h"
+#include "dsp/Compressor.h"
 
 // The channel strip. True stereo (stereo in, stereo out), or mono in, mono
-// out on a mono track. So far: INPUT, the HPF / LPF, the five-band EQ, the
-// OUTPUT column (Ø, MUTE, OUTPUT TRIM and the fader) and the meters. The
-// other modules are built one at a time (see CLAUDE.md).
+// out on a mono track. So far: INPUT, the HPF / LPF, the compressor, the
+// five-band EQ, the OUTPUT column (Ø, MUTE, OUTPUT TRIM and the fader) and
+// the meters. The other modules are built one at a time (see CLAUDE.md).
 class ParagonPR7CAudioProcessor final : public juce::AudioProcessor
 {
 public:
@@ -48,6 +49,11 @@ public:
 
     // Gain reduction for the GR meters, per dynamics module and channel.
     enum class Dynamics { gate, comp, limit };
+    // For COMP's own gain-change meter: its reduction (the louder channel),
+    // and its make-up gain (dB, 0 while it's off). Separate from the meter
+    // window's COMP meters, as each reading empties a source.
+    GainReductionSource& getCompGainChange() noexcept { return compGainChange; }
+    const std::atomic<float>& getCompMakeUp() const noexcept { return compMakeUpShown; }
     GainReductionSource& getGainReduction (Dynamics dynamics, int channel) noexcept
     {
         return gainReduction[(size_t) dynamics][(size_t) juce::jlimit (0, 1, channel)];
@@ -55,6 +61,9 @@ public:
 
 private:
     void pushMeters (std::array<LevelMeterSource, 2>&, const juce::AudioBuffer<float>&, int numSamples) noexcept;
+    // The modules, in their fixed order, on a stretch no longer than the
+    // block size prepareToPlay was given.
+    void processModules (juce::AudioBuffer<float>&, int numSamples) noexcept;
 
     juce::AudioProcessorValueTreeState parameters;
     std::atomic<float>* outputLevel = nullptr;
@@ -75,6 +84,17 @@ private:
         effects::EqBand (effects::EqBand::Shelf::low), effects::EqBand (effects::EqBand::Shelf::low)
     };
     effects::CutFilters::Settings filterSettings (int placement) const noexcept;
+
+    // The compressor, and its sidechain: what its detector hears (the audio,
+    // through the HPF / LPF when they're set to SC).
+    struct CompParameters { std::atomic<float>* on, * threshold, * ratio, * attack, * release, * autoRelease, * makeUp, * character, * link; };
+    CompParameters compParameters {};
+    effects::Compressor compressor;
+    GainReductionSource compGainChange;
+    std::atomic<float> compMakeUpShown { 0.0f };
+    effects::CutFilters filtersSidechain;
+    juce::AudioBuffer<float> sidechain;
+    int maxBlockSize = 0;
 
     // Every gain change glides over 20 ms, so nothing clicks. The output's
     // polarity, trim, fader and mute are one gain: flipping the polarity

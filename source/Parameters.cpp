@@ -9,6 +9,50 @@ namespace Parameters
         constexpr int firstVersion = 1;
         constexpr int panelVersion = 2;   // the OUTPUT column of the full panel layout
         constexpr int eqVersion = 3;      // the EQ and the HPF / LPF
+        constexpr int compVersion = 4;    // the compressor and LINK
+
+        // RATIO: the marks evenly round the knob, log-even between them. The
+        // bottom stretch (below 1.25) is the SOFT position.
+        juce::NormalisableRange<float> ratioRange()
+        {
+            using ParamRanges::compRatioMarks;
+            constexpr auto steps = (float) (std::size (compRatioMarks) - 1);
+            return { compRatioMarks[0], compRatioMarks[std::size (compRatioMarks) - 1],
+                     [] (float, float, float proportion)
+                     {
+                         const auto position = juce::jlimit (0.0f, 1.0f, proportion) * steps;
+                         const auto below = juce::jmin ((int) position, (int) steps - 1);
+                         const auto low = compRatioMarks[below], high = compRatioMarks[below + 1];
+                         return low * std::pow (high / low, position - (float) below);
+                     },
+                     [] (float, float, float ratio)
+                     {
+                         for (int i = 1; i < (int) std::size (compRatioMarks); ++i)
+                             if (ratio <= compRatioMarks[i])
+                                 return ((float) (i - 1) + std::log (ratio / compRatioMarks[i - 1]) / std::log (compRatioMarks[i] / compRatioMarks[i - 1])) / steps;
+                         return 1.0f;
+                     },
+                     [] (float, float, float ratio)
+                     {
+                         if (ratio < 1.25f)
+                             return 1.0f;   // SOFT
+                         return juce::jlimit (1.25f, compRatioMarks[std::size (compRatioMarks) - 1], ratio);
+                     } };
+        }
+
+        juce::String ratioText (float ratio, int)
+        {
+            if (ratio < 1.25f)
+                return "Soft";
+            if (ratio >= 29.5f)
+                return "Inf:1";
+            return juce::String (ratio, ratio < 10.0f ? 1 : 0) + ":1";
+        }
+
+        juce::String asMs (float ms, int)
+        {
+            return ms < 1000.0f ? juce::String (ms, ms < 10.0f ? 1 : 0) + " ms" : juce::String (ms / 1000.0f, 2) + " s";
+        }
 
         // A frequency knob: even travel per octave.
         juce::NormalisableRange<float> frequencyRange (float minHz, float maxHz)
@@ -159,6 +203,36 @@ namespace Parameters
                     juce::ParameterID { ParamIDs::eqShelf (band.id), eqVersion }, name + " Shelf", band.shelfByDefault,
                     juce::AudioParameterBoolAttributes().withStringFromValueFunction ([] (bool shelf, int) { return shelf ? "Shelf" : "Bell"; })));
         }
+
+        // COMP, and LINK.
+        const auto compBool = [&] (const char* id, const juce::String& name, bool on)
+        {
+            layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id, compVersion }, name, on,
+                                                                    juce::AudioParameterBoolAttributes().withStringFromValueFunction (onOff)));
+        };
+        const auto logRange = [] (float minimum, float maximum) { return frequencyRange (minimum, maximum); };   // even travel per doubling
+        compBool (ParamIDs::compOn, "Compressor", false);
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { ParamIDs::compThreshold, compVersion }, "Comp Threshold",
+            juce::NormalisableRange<float> (compThresholdMin, compThresholdMax, 0.1f), -18.0f,
+            juce::AudioParameterFloatAttributes().withLabel ("dB").withStringFromValueFunction (asDb)));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { ParamIDs::compRatio, compVersion }, "Comp Ratio", ratioRange(), 4.0f,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (ratioText)));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { ParamIDs::compAttack, compVersion }, "Comp Attack", logRange (compAttackMin, compAttackMax), 10.0f,
+            juce::AudioParameterFloatAttributes().withLabel ("ms").withStringFromValueFunction (asMs)));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { ParamIDs::compRelease, compVersion }, "Comp Release", logRange (compReleaseMin, compReleaseMax), 300.0f,
+            juce::AudioParameterFloatAttributes().withLabel ("ms").withStringFromValueFunction (asMs)));
+        compBool (ParamIDs::compAuto, "Comp Auto Release", false);
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { ParamIDs::compMakeUp, compVersion }, "Comp Make Up",
+            juce::NormalisableRange<float> (0.0f, compMakeUpMax, 0.1f), 0.0f,
+            juce::AudioParameterFloatAttributes().withLabel ("dB").withStringFromValueFunction (asDb)));
+        layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { ParamIDs::compCharacter, compVersion }, "Comp Character",
+                                                                  compCharacters, 0));
+        compBool (ParamIDs::dynamicsLink, "Link", true);
         return layout;
     }
 }

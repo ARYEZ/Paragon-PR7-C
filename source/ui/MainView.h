@@ -68,6 +68,8 @@ private:
                      std::vector<std::pair<float, juce::String>> marks, const juce::String& tooltip);
     void attachButton (const juce::String& controlId, const juce::String& parameterId, const juce::String& tooltip);
     void attachSwitch (const juce::String& controlId, const juce::String& parameterId, const juce::String& tooltip);
+    // A row of keys that pick one choice (VCA / OPTO / FET), in the choice's order.
+    void attachChoice (std::initializer_list<const char*> controlIds, const juce::String& parameterId);
 
     void showSettingsMenu();
 

@@ -14,11 +14,14 @@ Unlike PR7-B and PR7-V, it is **not** a copy of PR7-G. It was seeded lean: PR7-G
 
 - **The plugin:** true stereo (stereo in/out, or mono in/out on a mono track).
   - Its own identity: `Paragon PR7-C`, plugin code `Pr7c`, bundle `com.paragon.paragonpr7c`, maker code `Prgn`.
-  - Parameters: `inputGain`, `outputTrim`, `outputLevel` (the fader), `phaseInvert`, `mute`; the HPF / LPF (`hpfOn`, `hpfFreq`, `lpfOn`, `lpfFreq`, `filterPlacement`); the EQ (`<band>On/Freq/Gain` plus `<band>Q` or `<band>Shelf`, bands from `ParamRanges::eqBands`). Input and output peak meters (console-calibrated, with OVL), and gain-reduction sources (`getGainReduction`) for the GR meters, which stay at 0 until the dynamics exist.
+  - Parameters: `inputGain`, `outputTrim`, `outputLevel` (the fader), `phaseInvert`, `mute`; the HPF / LPF (`hpfOn`, `hpfFreq`, `lpfOn`, `lpfFreq`, `filterPlacement`); the EQ (`<band>On/Freq/Gain` plus `<band>Q` or `<band>Shelf`, bands from `ParamRanges::eqBands`); the compressor (`comp*`) and `dynamicsLink`. Input and output peak meters (console-calibrated, with OVL), and gain-reduction sources (`getGainReduction`) for the GR meters, which stay at 0 until the dynamics exist.
 - **`source/ui/MainView`:** a fixed **1448 × 1086** canvas, exactly the concept image's size, so coordinates can be read straight off `docs/concept.png`. The editor scales it to the window.
   - **Step 1 is done:** every module's panel is drawn with all its controls, placed as on the concept. `MainView::modules()` holds each module's rectangle.
   - Controls are registered by ID (`"comp.ratio"`, `"hf.on"`...; see `MainView.cpp`). Controls of unbuilt modules are **inert** (tooltips say which step brings them). Each step creates the parameters and brings its controls to life with `attachKnob` (prints the scale at the true values and turns on the value popup), `attachButton` and `attachSwitch`.
-- **`source/dsp/`:** `Biquad` (cookbook filters), `ChannelEq` (`EqBand`, `CutFilters`).
+- **`source/dsp/`:** `Biquad` (cookbook filters), `ChannelEq` (`EqBand`, `CutFilters`), `Compressor`.
+  - Modules jump straight to their settings on the first block after `prepare`/`reset` (`fresh`), and glide or fade only for changes made while playing.
+  - The processor runs the modules in stretches no longer than the prepared block size (`processModules`), as their working buffers are that size. The dynamics' detector hears `sidechain`: the audio at that point, through the HPF / LPF when they're on SC.
+- **`PARAGON_SNAPSHOT_DEMO=1`** switches modules on for a render that shows them working (the compressor so far).
   - `source/ui/Controls`: `Knob` (draws itself; its slider only takes the mouse over the knob), `Led`, `LeverSwitch`, `RoundButton`, `GainReductionMeter`. Buttons are `TextButton`s with `ParagonLookAndFeel::consoleButtonProperty`.
 - **Carried over from PR7-G:**
   - `ParagonLookAndFeel` (Inter fonts, knobs, LED/neon bars, piano keys, chrome bezels).
@@ -55,15 +58,11 @@ The behaviour notes below are **modelled on** a classic 1970s/80s British consol
 3. **SC FILTER.** HPF (about 20–200 Hz) and LPF (about 1–20 kHz) in the gate/comp detector.
    - **LISTEN** lets you hear the sidechain signal.
    - **HIGH Q** gives resonant filters that emphasise the frequencies at the cutoff.
-4. **COMP.**
-   - **THRESHOLD** and **RATIO**. Ratio runs about 1.5:1–20:1; consider a **soft-knee** position at the bottom of its range, where the ratio rises smoothly with level, as on the reference.
-   - **VCA / OPTO / FET** character switch, a new idea for this design:
-     - **VCA:** clean, precise, hard knee.
-     - **OPTO:** slow, programme-dependent, smooth release.
-     - **FET:** fast, aggressive, adds harmonics.
-   - **ATTACK**, **RELEASE** and an **AUTO** release LED.
-   - **GR meter** from -20 to +20 (a "gain change" meter: reduction left, make-up right).
-   - Start from `reference/pr7g/CompGate` (the Daybreak type).
+4. **COMP. (Built, step 3; all of it our design.)** Off by default. THRESHOLD -50 to 0 dBFS; RATIO SOFT, 1.5:1 to ∞ (marks evenly round the knob, `compRatioMarks`); ATTACK 0.1–30 ms; RELEASE 50 ms–3 s; AUTO; MAKE UP 0–20 dB; LINK (`dynamicsLink`, on by default) uses the louder channel's level for both.
+   - **SOFT:** the output over the threshold is 4·over/(4+over): about 3:1 at 8 dB over, 6:1 at 20, 10:1 at 36, a smooth knee built in.
+   - **VCA:** RMS detector (5 ms), 1 dB knee. **OPTO:** RMS (20 ms), 12 dB knee, attack ×2, stretching release. **FET:** peak detector, 3 dB knee, third-harmonic grit ∝ gain reduction (about 1% at 20 dB), measured against the signal's own peak so it doesn't depend on level. The grit is a gentle cubic and isn't oversampled (aliasing tiny); revisit with the SATURATION step. RMS readings get +3 dB, so a sine's threshold is the same in every character.
+   - **Release stretch** (OPTO always, VCA/FET with AUTO): 0.35× after a short peak up to 3× after long compression (a 1.5 s memory of the reduction).
+   - Meters: the meter window's COMP pair per channel; COMP's own gain-change meter (its own source: each reading empties a source) shows reduction left, make-up right.
 5. **EQ: five bands. (Built, step 2.)** Each band has an on LED, frequency (even travel per octave), **GAIN ±15 dB**.
    - **HF** 2–20 kHz, high shelf (default) or bell. **LMF** 40–600 Hz, bell (default) or low shelf. **LF** 20–200 Hz, low shelf (default) or bell. The SHELF key and the curve key are the same switch. As bells they use Q 0.9.
    - **HMF** 400 Hz–5 kHz and **MF** 150 Hz–2.5 kHz: bells with **Q** 0.5–4 (the small knob turns 9 to 3 o'clock). The concept's curve keys on these two were removed: they'd have done nothing.

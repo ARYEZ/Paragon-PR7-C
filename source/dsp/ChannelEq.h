@@ -50,6 +50,7 @@ namespace effects
 
         Shelf shelfType;
         double sampleRate = 48000.0;
+        bool fresh = true;      // the first block after prepare / reset: jump to the settings, no glide
         bool isShelf = false;   // the curve it's running now
         juce::SmoothedValue<float, juce::ValueSmoothingTypes::Multiplicative> frequency { 1000.0f }, q { 1.0f };
         juce::SmoothedValue<float> gainDb { 0.0f }, shapeFade { 1.0f };
@@ -85,6 +86,7 @@ namespace effects
         void process (Filter&, bool highPass, juce::AudioBuffer<float>&, int numSamples, bool on, float frequency) noexcept;
 
         double sampleRate = 48000.0;
+        bool fresh = true;      // the first block after prepare / reset: jump to the settings, no fade
         Filter highPass, lowPass;
     };
 }

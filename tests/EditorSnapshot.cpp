@@ -8,7 +8,8 @@
 // UI without a DAW. Run with:
 //   PARAGON_SNAPSHOT=editor.png ./ParagonPR7CTests "[snapshot]"
 // PARAGON_SNAPSHOT_WIDTH sets the window width (default: the canvas's 1448;
-// 2896 for a 2x render). PARAGON_SNAPSHOT_FINISH=black or =neon picks the finish.
+// 2896 for a 2x render). PARAGON_SNAPSHOT_FINISH=black or =neon picks the finish;
+// PARAGON_SNAPSHOT_DEMO=1 switches some modules on to show them working.
 TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
 {
     const auto path = juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT", "editor.png");
@@ -17,6 +18,18 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
 
     ParagonPR7CAudioProcessor processor;
     processor.prepareToPlay (48000.0, 256);
+
+    // PARAGON_SNAPSHOT_DEMO=1: some modules switched on and set, to show
+    // them working (the compressor squeezing, with make-up).
+    if (juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_DEMO", {}) == "1")
+    {
+        for (const auto& [id, value] : { std::pair (ParamIDs::compOn, 1.0f), { ParamIDs::compThreshold, -32.0f }, { ParamIDs::compMakeUp, 6.0f },
+                                         { ParamIDs::compAuto, 1.0f } })
+        {
+            auto* parameter = processor.getParameters().getParameter (id);
+            parameter->setValueNotifyingHost (parameter->convertTo0to1 (value));
+        }
+    }
 
     std::unique_ptr<juce::AudioProcessorEditor> editor (processor.createEditor());
     const auto width = juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_WIDTH", juce::String (MainView::width)).getIntValue();
