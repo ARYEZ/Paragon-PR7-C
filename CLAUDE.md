@@ -20,6 +20,7 @@ Unlike PR7-B and PR7-V, it is **not** a copy of PR7-G. It was seeded lean: PR7-G
   - Controls are registered by ID (`"comp.ratio"`, `"hf.on"`...; see `MainView.cpp`). Controls of unbuilt modules are **inert** (tooltips say which step brings them). Each step creates the parameters and brings its controls to life with `attachKnob` (prints the scale at the true values and turns on the value popup), `attachButton` and `attachSwitch`.
 - **`source/dsp/`:** `Biquad` (cookbook filters), `ChannelEq` (`EqBand`, `CutFilters`), `Compressor`, `Limiter`, `Gate`, `Saturation`, `ConsoleColour` (THD and noise), `ConsoleChannel` (the 72 channels' tolerances) and `StereoTools` (mono maker, width).
   - `source/ChannelRegistry`: every PR7-C in the process, for RANDOM CH. (message thread only).
+- **`source/PresetManager`:** factory presets (in code, each listing only what differs from the defaults) and user presets (XML `.pr7cpreset` files in Documents/Paragon PR7-C/Presets). The processor owns one (`getPresets()`); the current name lives in the state (`presetName`).
   - The HPF / LPF and EQ run one instance per side (`processFilters`, `processEq`), as each side can be a different console channel.
   - Modules jump straight to their settings on the first block after `prepare`/`reset` (`fresh`), and glide or fade only for changes made while playing.
   - The processor runs the modules in stretches no longer than the prepared block size (`processModules`), as their working buffers are that size. The gate and compressor share one detector signal, `sidechain`: the audio at the gate's input, through the HPF / LPF when they're on SC, then the SC FILTER. LISTEN crossfades the strip's output to it.
@@ -91,12 +92,12 @@ The behaviour notes below are **modelled on** a classic 1970s/80s British consol
     - A host that runs each plugin in its own process can't share the registry.
     - The IN / OUT lamp (`output.on`) is lit and does nothing: the output stage is always on.
 12. **OUTPUT TRIM** knob (±12 dB) and the **output fader** (+10 to -60 dB). *See open questions.*
-13. **Header:**
-    - The preset name with ◀ ▶.
-    - **A / B** compare (with an LED).
-    - **SAVE**.
-    - A "…" menu.
-    - The settings gear (a natural place for the **FINISH** choice).
+13. **Header. (Built, step 8.)**
+    - The preset name (click it for the list: Factory, then "Yours" A to Z) with ◀ ▶ (step through, wrapping). " *" after the name = changed since loaded (compared against what the preset set, in the editor's timer).
+    - **SAVE** asks for a name (a user preset; asks before replacing one; factory names refused). The **"…"** menu: back to the defaults, delete the current user preset, show the presets folder.
+    - A preset sets **every** parameter except `isKept` ones: the fader, the console channel (so ONE / ALL survive), LISTEN and MUTE. Unmentioned parameters go to their defaults; a user preset saved before a parameter existed gets its default.
+    - Presets are **not** exposed to the host as programs: hosts calling setCurrentProgram (0) at song load would reset the settings.
+    - The settings gear holds the FINISH choice. No A/B, no copy/paste (owner decision).
 
 ## Build order (agreed with the owner)
 
@@ -112,7 +113,7 @@ One module at a time. Each step is built, tested and **rendered**, and the owner
 5. **Gate / expander** (and SC FILTER).
 6. **Saturation**, then the FILTERS / TONE colour (THD, V GAIN, channels).
 7. **Stereo features:** mono maker, stereo width, stereo modes.
-8. **Presets, A/B and the header.** *Ask the owner where this fits.*
+8. **Presets and the header.** (Built: factory and user presets, no A/B.)
 
 ## Owner decisions
 

@@ -56,6 +56,7 @@ target_sources(ParagonPR7C
         source/dsp/ConsoleColour.cpp
         source/dsp/StereoTools.cpp
         source/ChannelRegistry.cpp
+        source/PresetManager.cpp
         source/ui/MainView.cpp
         source/ui/Controls.cpp
         source/ui/LevelMeter.cpp

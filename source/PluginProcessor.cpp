@@ -38,6 +38,7 @@ ParagonPR7CAudioProcessor::ParagonPR7CAudioProcessor()
                          raw (ParamIDs::stereoMode) };
     limitParameters = { raw (ParamIDs::limitOn), raw (ParamIDs::limitThreshold), raw (ParamIDs::limitMakeUp), raw (ParamIDs::limitMode),
                         raw (ParamIDs::limitMix) };
+    presets.stateRestored();   // "Default", unmodified
     ChannelRegistry::add (*this);
 }
 
@@ -326,7 +327,10 @@ void ParagonPR7CAudioProcessor::getStateInformation (juce::MemoryBlock& destinat
 void ParagonPR7CAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     if (const auto xml = getXmlFromBinary (data, sizeInBytes); xml != nullptr && xml->hasTagName (parameters.state.getType()))
+    {
         parameters.replaceState (juce::ValueTree::fromXml (*xml));
+        presets.stateRestored();
+    }
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()

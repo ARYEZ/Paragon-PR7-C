@@ -22,6 +22,12 @@ Each version's notes appear on its GitHub Release page.
   - Both are off by default.
 - **STEREO MODE works.** **ANALOG** (the default): the right side uses the console channel next to the left's, so the sides differ very slightly. **DIGITAL**: both sides use the left's channel, so they're treated identically.
 - **RANDOM CH.**: **ONE** moves this PR7-C to a random console channel no other PR7-C in your session is using. **ALL** gives every PR7-C in the session its own new channels, like tracks on a real console.
+- **Presets.** 16 factory presets as starting points (vocals, drums, bass, guitars, piano, mix bus, master, console character, lo-fi), and your own:
+  - **◀ ▶** step through them; **click the name** for the full list.
+  - **SAVE** stores the current settings under a name of your choice. Your presets are files in Documents/Paragon PR7-C/Presets, so you can copy them to another computer.
+  - A **\*** after the name means you've changed something since loading it.
+  - The **…** menu: back to the default settings, delete one of your presets, or open the presets folder.
+  - Loading a preset leaves the fader, the console channel, LISTEN and MUTE as they are, as they belong to the track rather than the sound.
 
 ## 0.3.0
 

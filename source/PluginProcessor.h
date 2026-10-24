@@ -5,6 +5,7 @@
 #include "ChannelRegistry.h"
 #include "LevelMeterSource.h"
 #include "Parameters.h"
+#include "PresetManager.h"
 #include "dsp/ChannelEq.h"
 #include "dsp/Compressor.h"
 #include "dsp/ConsoleChannel.h"
@@ -51,6 +52,8 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
     juce::AudioProcessorValueTreeState& getParameters() noexcept { return parameters; }
+    // Factory and user presets (the header). Message thread only.
+    PresetManager& getPresets() noexcept { return presets; }
 
     // Peak levels for the meters, per channel (0 left, 1 right; on a mono
     // track both show the one channel).
@@ -119,6 +122,8 @@ private:
     struct StereoParameters { std::atomic<float>* monoOn, * monoFrequency, * widthOn, * width, * mode; };
     StereoParameters stereoParameters {};
     effects::StereoTools stereoTools;
+
+    PresetManager presets { parameters };
 
     // The gate and compressor, and their shared sidechain: what their
     // detectors hear (the audio at the gate's input, through the HPF / LPF

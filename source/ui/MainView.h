@@ -75,6 +75,18 @@ private:
 
     void showSettingsMenu();
 
+    // The header's presets: the name display (click it for the list), ◀ ▶,
+    // SAVE and the "..." menu.
+    void mouseDown (const juce::MouseEvent&) override;
+    juce::String presetDisplayText() const;
+    void showPresetList();
+    void showPresetMenu();
+    void askToSavePreset();
+    void savePreset (const juce::String& name);
+    const juce::Rectangle<float> presetDisplay { 513.0f, 18.0f, 422.0f, 44.0f };
+    juce::String shownPreset;
+    std::unique_ptr<juce::AlertWindow> saveDialog;
+
     ParagonPR7CAudioProcessor& processor;
     juce::OwnedArray<juce::Component> ownedControls;
     std::map<juce::String, juce::Component*> controls;
