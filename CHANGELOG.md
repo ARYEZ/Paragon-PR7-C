@@ -2,6 +2,15 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## Unreleased
+
+- **The saturation works.** Our own design, after the idea of a harmonics generator:
+  - **DRIVE** (0 to +24 dB) pushes the sound into the saturation. The level stays the same, so it changes the colour, not the loudness. At 0, normal levels are only lightly coloured.
+  - **HARMONICS** (where the concept had TONE): turn left for 2nd-harmonic warmth (valve-like), right for 3rd-harmonic grit (transistor-like), or anywhere between.
+  - **VCA CLIP** flattens the loudest peaks harder, for crunch.
+  - **MIX** (a small knob under VCA CLIP) blends in the dry sound, for parallel saturation.
+  - It runs at four times the sample rate, so driving it hard doesn't add harsh aliasing. While it's on, that delays the sound by about 0.1 ms, far too little to hear.
+
 ## 0.3.0
 
 **New: the dynamics.** The gate / expander, the SC FILTER, the compressor and the limiter all work now. Everything new is off by default, so a fresh PR7-C still leaves your audio untouched.

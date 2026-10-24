@@ -12,6 +12,7 @@ add_executable(ParagonPR7CTests
     CompressorTests.cpp
     LimiterTests.cpp
     GateTests.cpp
+    SaturationTests.cpp
     EditorSnapshot.cpp)
 
 # Link the plugin's shared code (processor, editor, JUCE modules) so the

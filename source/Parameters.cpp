@@ -12,6 +12,7 @@ namespace Parameters
         constexpr int compVersion = 4;    // the compressor and LINK
         constexpr int limitVersion = 5;   // the limiter
         constexpr int gateVersion = 6;    // the gate / expander and the SC FILTER
+        constexpr int satVersion = 7;     // the saturation
 
         // RATIO: the marks evenly round the knob, log-even between them. The
         // bottom stretch (below 1.25) is the SOFT position.
@@ -309,6 +310,26 @@ namespace Parameters
         frequencyOf (layout, ParamIDs::scLpf, "SC LPF", scLpfMin, scLpfMax, 20000.0f, gateVersion);
         gateBool (ParamIDs::scListen, "SC Listen", false);
         gateBool (ParamIDs::scHighQ, "SC High Q", false);
+
+        // SATURATION.
+        const auto percent = [] (float v, int) { return juce::String (juce::roundToInt (v)) + "%"; };
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { ParamIDs::satOn, satVersion }, "Saturation", false,
+                                                                juce::AudioParameterBoolAttributes().withStringFromValueFunction (onOff)));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { ParamIDs::satDrive, satVersion }, "Sat Drive", juce::NormalisableRange<float> (0.0f, satDriveMax, 0.1f), 6.0f,
+            juce::AudioParameterFloatAttributes().withLabel ("dB").withStringFromValueFunction (asDb)));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { ParamIDs::satHarmonics, satVersion }, "Sat Harmonics", juce::NormalisableRange<float> (0.0f, 100.0f, 1.0f), 30.0f,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int)
+            {
+                const auto odd = juce::roundToInt (v);
+                return odd == 0 ? juce::String ("2nd") : odd == 100 ? juce::String ("3rd") : juce::String (100 - odd) + "% 2nd / " + juce::String (odd) + "% 3rd";
+            })));
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { ParamIDs::satVcaClip, satVersion }, "Sat VCA Clip", false,
+                                                                juce::AudioParameterBoolAttributes().withStringFromValueFunction (onOff)));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { ParamIDs::satMix, satVersion }, "Sat Mix", juce::NormalisableRange<float> (0.0f, 100.0f, 1.0f), 100.0f,
+            juce::AudioParameterFloatAttributes().withLabel ("%").withStringFromValueFunction (percent)));
         return layout;
     }
 }

@@ -31,6 +31,8 @@ ParagonPR7CAudioProcessor::ParagonPR7CAudioProcessor()
                        raw (ParamIDs::gateExpander), raw (ParamIDs::gateRatio), raw (ParamIDs::gateAttack), raw (ParamIDs::gateHold),
                        raw (ParamIDs::gateRelease), raw (ParamIDs::gateLinear) };
     scParameters = { raw (ParamIDs::scOn), raw (ParamIDs::scHpf), raw (ParamIDs::scLpf), raw (ParamIDs::scListen), raw (ParamIDs::scHighQ) };
+    satParameters = { raw (ParamIDs::satOn), raw (ParamIDs::satDrive), raw (ParamIDs::satHarmonics), raw (ParamIDs::satVcaClip),
+                      raw (ParamIDs::satMix) };
     limitParameters = { raw (ParamIDs::limitOn), raw (ParamIDs::limitThreshold), raw (ParamIDs::limitMakeUp), raw (ParamIDs::limitMode),
                         raw (ParamIDs::limitMix) };
 }
@@ -54,6 +56,7 @@ void ParagonPR7CAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     listen.reset (sampleRate, 0.02);
     listen.setCurrentAndTargetValue (scParameters.listen->load() >= 0.5f ? 1.0f : 0.0f);
     limiter.prepare (sampleRate, maxBlockSize);
+    saturation.prepare (sampleRate, maxBlockSize);
     filtersSidechain.prepare (sampleRate);
     for (auto* gain : { &inputGain, &outputGain })
         gain->reset (sampleRate, 0.02);
@@ -183,7 +186,11 @@ void ParagonPR7CAudioProcessor::processModules (juce::AudioBuffer<float>& buffer
     for (int channel = 0; channel < 2; ++channel)
         getGainReduction (Dynamics::limit, channel).push (limiter.getReductionDb (channel));
 
-    // SATURATION, the console colour and the stereo tools will go here.
+    const auto& s = satParameters;
+    saturation.process (buffer, numSamples, { s.on->load() >= 0.5f, s.drive->load(), s.harmonics->load() / 100.0f,
+                                              s.vcaClip->load() >= 0.5f, s.mix->load() / 100.0f });
+
+    // The console colour and the stereo tools will go here.
 
     // LISTEN: hear what the gate and compressor hear instead (a 20 ms crossfade).
     listen.setTargetValue (sc.listen->load() >= 0.5f ? 1.0f : 0.0f);

@@ -14,14 +14,14 @@ Unlike PR7-B and PR7-V, it is **not** a copy of PR7-G. It was seeded lean: PR7-G
 
 - **The plugin:** true stereo (stereo in/out, or mono in/out on a mono track).
   - Its own identity: `Paragon PR7-C`, plugin code `Pr7c`, bundle `com.paragon.paragonpr7c`, maker code `Prgn`.
-  - Parameters: `inputGain`, `outputTrim`, `outputLevel` (the fader), `phaseInvert`, `mute`; the HPF / LPF (`hpfOn`, `hpfFreq`, `lpfOn`, `lpfFreq`, `filterPlacement`); the EQ (`<band>On/Freq/Gain` plus `<band>Q` or `<band>Shelf`, bands from `ParamRanges::eqBands`); the gate (`gate*`), SC FILTER (`sc*`), compressor (`comp*`), limiter (`limit*`) and `dynamicsLink`. Input and output peak meters (console-calibrated, with OVL), and gain-reduction sources (`getGainReduction`) for the GR meters, which stay at 0 until the dynamics exist.
+  - Parameters: `inputGain`, `outputTrim`, `outputLevel` (the fader), `phaseInvert`, `mute`; the HPF / LPF (`hpfOn`, `hpfFreq`, `lpfOn`, `lpfFreq`, `filterPlacement`); the EQ (`<band>On/Freq/Gain` plus `<band>Q` or `<band>Shelf`, bands from `ParamRanges::eqBands`); the gate (`gate*`), SC FILTER (`sc*`), compressor (`comp*`), limiter (`limit*`), saturation (`sat*`) and `dynamicsLink`. Input and output peak meters (console-calibrated, with OVL), and gain-reduction sources (`getGainReduction`) for the GR meters, which stay at 0 until the dynamics exist.
 - **`source/ui/MainView`:** a fixed **1448 × 1086** canvas, exactly the concept image's size, so coordinates can be read straight off `docs/concept.png`. The editor scales it to the window.
   - **Step 1 is done:** every module's panel is drawn with all its controls, placed as on the concept. `MainView::modules()` holds each module's rectangle.
   - Controls are registered by ID (`"comp.ratio"`, `"hf.on"`...; see `MainView.cpp`). Controls of unbuilt modules are **inert** (tooltips say which step brings them). Each step creates the parameters and brings its controls to life with `attachKnob` (prints the scale at the true values and turns on the value popup), `attachButton` and `attachSwitch`.
-- **`source/dsp/`:** `Biquad` (cookbook filters), `ChannelEq` (`EqBand`, `CutFilters`), `Compressor`, `Limiter`, `Gate`.
+- **`source/dsp/`:** `Biquad` (cookbook filters), `ChannelEq` (`EqBand`, `CutFilters`), `Compressor`, `Limiter`, `Gate`, `Saturation`.
   - Modules jump straight to their settings on the first block after `prepare`/`reset` (`fresh`), and glide or fade only for changes made while playing.
   - The processor runs the modules in stretches no longer than the prepared block size (`processModules`), as their working buffers are that size. The gate and compressor share one detector signal, `sidechain`: the audio at the gate's input, through the HPF / LPF when they're on SC, then the SC FILTER. LISTEN crossfades the strip's output to it.
-- **`PARAGON_SNAPSHOT_DEMO=1`** switches modules on for a render that shows them working (the expander, compressor and limiter so far).
+- **`PARAGON_SNAPSHOT_DEMO=1`** switches modules on for a render that shows them working (the expander, compressor, limiter and saturation so far).
   - `source/ui/Controls`: `Knob` (draws itself; its slider only takes the mouse over the knob), `Led`, `LeverSwitch`, `RoundButton`, `GainReductionMeter`. Buttons are `TextButton`s with `ParagonLookAndFeel::consoleButtonProperty`.
 - **Carried over from PR7-G:**
   - `ParagonLookAndFeel` (Inter fonts, knobs, LED/neon bars, piano keys, chrome bezels).
@@ -65,10 +65,11 @@ The behaviour notes below are **modelled on** a classic 1970s/80s British consol
 6. **LIMIT. (Built, step 4; our design.)** Off by default. A peak limiter with **no look-ahead (zero latency)**: an instant-attack peak envelope, so the ceiling always holds, at the price of squaring off the first instant of a hard-limited peak. THRESHOLD −20 to 0 dBFS (default −1); MAKE UP 0–12 dB (the ceiling rises with it); MIX 0–100% (below 100% some original peaks come back); LINK shared with COMP.
    - **BRICK:** gain = ceiling / envelope, 100 ms release. **SOFT:** a 6 dB knee centred on the threshold (it flattens exactly at the threshold, so it holds the ceiling too), 150 ms release. An attack time was tried and dropped: without look-ahead it lets every hit through. **AUTO:** BRICK's ceiling, release 30 ms after a short peak stretching to about 400 ms under steady limiting.
    - If the owner wants cleaner hard limiting, add look-ahead as a constant latency (reported with `setLatencySamples`), on or off.
-7. **SATURATION.**
-   - **DRIVE** (0–100%).
-   - **VCA CLIP:** a soft-to-hard clipper, like overdriving the console's VCA.
-   - **TONE** (±12). Oversample the non-linear parts to avoid aliasing.
+7. **SATURATION. (Built, step 6; our design.)** Off by default. The owner wanted it "more like" a well-known harmonics-generator saturator (they supplied its user guide; **don't name it**): we took the general idea, not a model of it (the guide has no curves, and it can't be measured here).
+   - **DRIVE** 0 to +24 dB (dB, not the concept's %), level-compensated (÷ drive), so it changes colour, not loudness. The saturation point at DRIVE 0 is +6 dBFS (`headroom` 2): normal levels barely coloured at 0, well in at +18 to +24.
+   - **HARMONICS** (the concept's TONE knob): 0% = a tanh biased by 0.5 (lopsided, valve-like, mostly 2nd), 100% = plain tanh (transistor-like, 3rd); a blend between. A 5 Hz DC blocker removes the lopsided curve's offset.
+   - **VCA CLIP**: a hard-kneed clip at 0.8 (in the driven domain) before the curves, blended in over 30 ms. **MIX** 0–100%: a small knob under VCA CLIP (9 to 3 o'clock).
+   - 4× oversampling (JUCE polyphase IIR, 2 stages); dry and wet are mixed at the high rate, so they line up. A few samples' delay while on (not reported to the host); while off, the audio is untouched but the filters keep running on a copy (`warmUp`), so switching on doesn't ring.
 8. **FILTERS / TONE**, the console colour module, which also holds the meter window:
    - **THD:** harmonic saturation and density added to the EQ'd signal; OFF to 100.
    - **V GAIN:** console noise floor (hiss/hum), off to audible. The concept scale reads -15 to +15 dB; *confirm with the owner*.
@@ -123,6 +124,7 @@ Settled with the owner during step 1 (after reading a research summary of the re
 - **COMP:** keep ATTACK, RELEASE, AUTO and VCA / OPTO / FET (our own design). RATIO has a **SOFT** position at the bottom (the ratio rises gently with level, roughly 3:1 on normal material towards 6:1 and more on peaks), then about 1.5:1 to ∞:1. Added **MAKE UP** (0 to +20 dB). No MIX: it didn't fit the panel cleanly.
 - **EQ: five bands.** LF sits on the concept's blank plate. HF, LMF and LF have a **SHELF** key (lit = shelf, off = bell); HMF and MF have Q. No INVERT, GAIN SCALE or AUTO LISTEN for now.
 - **V GAIN** is the console **noise** only, OFF to audible. THD is the density.
+- **SATURATION:** DRIVE, HARMONICS (2nd ↔ 3rd, replacing TONE), VCA CLIP and a small MIX; DRIVE keeps the level steady. (Built, step 6.)
 - **IN / OUT column:** **INPUT** (-24 to +12 dB, 0 dB at the top of the knob) before everything; **OUTPUT TRIM** (±12 dB); the **fader** (+10 dB down to **silence** at the very bottom; ID `outputLevel`). All three work, with Ø and MUTE.
 - **Meters:** IN (L, R) and OUT (L, R) side by side. **Console calibration: 0 on the scale = -20 dBFS**, so +20 is digital full scale. White up to 0, amber above (hot), red past +20. **OVL** lamp for anything past full scale. The round button (or OVL) clears the peak marks and OVL. The saturation/colour modules should use the same reference: 0 on the meter is the console's nominal level.
 - **LINK** (on the LIMIT panel, ID `dynamics.link`) links the gate, compressor and limiter.

@@ -213,9 +213,14 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
 
     // SATURATION.
     addLed ("sat.on", { 375, 850 }, later ("Saturation on/off", colourStep));
-    addKnob ("sat.drive", P (401, 926), 31, { "0", "50", "100" }, {}, "DRIVE", 0.0, later ("Drive", colourStep));
-    addButton ("sat.vcaClip", "VCA CLIP", R (459, 908, 70, 35), true, later ("VCA CLIP: a soft-to-hard clipper, like overdriving the console's VCA", colourStep));
-    addKnob ("sat.tone", P (579, 926), 31, { "-12", "0", "+12" }, {}, "TONE", 0.5, later ("Saturation tone", colourStep));
+    addKnob ("sat.drive", P (401, 926), 31, {}, {}, "DRIVE", 0.0, {});
+    addButton ("sat.vcaClip", "VCA CLIP", R (459, 878, 70, 30), true, {});
+    addKnob ("sat.harmonics", P (579, 926), 31, {}, {}, "HARMONICS", 0.5, {});
+    // MIX: a small knob under VCA CLIP, turning 9 o'clock to 3 like the Q
+    // knobs, its scale round the top.
+    auto& satMix = addKnob ("sat.mix", P (494, 948), 15, {}, {}, {}, 1.0, {});
+    satMix.setTravel (juce::MathConstants<float>::pi * 1.5f, juce::MathConstants<float>::pi * 2.5f);
+    satMix.addLabel (0.5f, "MIX");
 
     // EQ: five bands. HF, LMF and LF have a SHELF key; HMF and MF a Q knob.
     struct Band { const char* id; const char* name; std::vector<juce::String> scale; bool shelf; };
@@ -432,6 +437,16 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
                 "Sidechain LPF: the gate and compressor ignore highs above it (so cymbals don't set them off)");
     attachButton ("sc.listen", ParamIDs::scListen, "LISTEN: hear what the gate and compressor hear, to set the filters. Turn it off to hear the music again.");
     attachButton ("sc.highQ", ParamIDs::scHighQ, "HIGH Q: resonant sidechain filters, focusing the gate and compressor on the frequencies at the cutoffs");
+
+    // SATURATION (step 6).
+    attachButton ("sat.on", ParamIDs::satOn, "Saturation on/off");
+    attachKnob ("sat.drive", ParamIDs::satDrive, { { 0.0f, "0" }, { 12.0f, "12" }, { 24.0f, "24" } },
+                "Drive (dB): how hard it's pushed into the saturation. The level stays the same; the colour changes.");
+    attachButton ("sat.vcaClip", ParamIDs::satVcaClip, "VCA CLIP: flattens the loudest peaks much harder before the saturation, for crunch");
+    attachKnob ("sat.harmonics", ParamIDs::satHarmonics, { { 0.0f, "2nd" }, { 100.0f, "3rd" } },
+                "Harmonics: left, 2nd-harmonic warmth (valve-like); right, 3rd-harmonic grit (transistor-like); in between, a blend");
+    attachKnob ("sat.mix", ParamIDs::satMix, { { 0.0f, "0" }, { 100.0f, "100" } },
+                "Mix: the saturated sound blended with the dry, for parallel saturation");
 
     // LIMIT (step 4).
     attachButton ("limit.on", ParamIDs::limitOn, "Limiter on/off. A peak limiter with no look-ahead, so it adds no delay.");

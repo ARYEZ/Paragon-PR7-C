@@ -64,6 +64,13 @@ namespace ParamIDs
     inline constexpr auto scListen = "scListen";             // hear the sidechain
     inline constexpr auto scHighQ = "scHighQ";
 
+    // SATURATION.
+    inline constexpr auto satOn = "satOn";
+    inline constexpr auto satDrive = "satDrive";             // dB
+    inline constexpr auto satHarmonics = "satHarmonics";     // %: 0 = 2nd, 100 = 3rd
+    inline constexpr auto satVcaClip = "satVcaClip";
+    inline constexpr auto satMix = "satMix";                 // %
+
     // LINK, on the LIMIT panel: links the gate, compressor and limiter.
     inline constexpr auto dynamicsLink = "dynamicsLink";
 }
@@ -112,6 +119,8 @@ namespace ParamRanges
     inline const juce::StringArray gateAttacks { "Fast", "Med", "Slow" };        // saved by index: only append
     inline constexpr float scHpfMin = 20.0f, scHpfMax = 200.0f, scLpfMin = 1000.0f, scLpfMax = 20000.0f;
     inline constexpr float scHighQ = 2.5f;   // the SC FILTER's resonance with HIGH Q
+
+    inline constexpr float satDriveMax = 24.0f;
 
     // RATIO's printed marks, evenly spaced round the knob: SOFT (1), then
     // 1.5:1 to infinite (30). The travel between marks is even in log ratio.
