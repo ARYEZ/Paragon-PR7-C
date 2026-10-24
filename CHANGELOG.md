@@ -2,7 +2,9 @@
 
 Each version's notes appear on its GitHub Release page.
 
-## Unreleased
+## 0.2.0
+
+**Still to come:** the compressor, limiter, gate, saturation, console colour, stereo tools and presets. Their controls are on the panel but don't do anything yet.
 
 - **The full panel, laid out as in the concept design.** Every module is drawn with all its knobs, keys, lamps and switches. Most don't do anything yet: each comes to life in its own step (hover over one to see which).
 - **Changes from the concept:**
