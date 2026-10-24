@@ -130,6 +130,7 @@ Settled with the owner during step 1 (after reading a research summary of the re
 - **Mono maker** 20 to 500 Hz. **Stereo width** 0 to 200%. No PAN (the DAW has one).
 - **Finish:** the family finishes only (Pearl White default, White + Neon, Pearl Black), from the settings gear. **Pearl Black is near black**, like the PR7-G black unit (face about #0d0d0d to #131010).
 - **Stereo mode:** ANALOG (left and right use different channels) and DIGITAL (both use the left channel). Under RANDOM CH.: ONE re-rolls this instance to an unused channel; ALL re-rolls every PR7-C in the session. Default channels 1 / 2, ANALOG.
+- **No backward compatibility needed yet** (said at 0.4.0): the owner has no songs or presets saved with any version so far. Don't spend effort keeping older saved projects sounding the same. Still keep parameter IDs stable from here on, as songs saved with 0.4.0 onward will depend on them.
 - **Sidechain:** internal only, no external key.
 - **Presets:** factory presets and user presets (SAVE). No A/B, no copy/paste.
 - **Knobs:** every working knob and the fader show their value while turned; Shift-drag for fine control. Enable the value popup (`setPopupDisplayEnabled`) on each knob as its step attaches it.
