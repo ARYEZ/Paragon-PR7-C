@@ -51,6 +51,7 @@ target_sources(ParagonPR7C
         source/dsp/ChannelEq.cpp
         source/dsp/Compressor.cpp
         source/dsp/Limiter.cpp
+        source/dsp/Gate.cpp
         source/ui/MainView.cpp
         source/ui/Controls.cpp
         source/ui/LevelMeter.cpp

@@ -27,6 +27,10 @@ ParagonPR7CAudioProcessor::ParagonPR7CAudioProcessor()
     compParameters = { raw (ParamIDs::compOn), raw (ParamIDs::compThreshold), raw (ParamIDs::compRatio), raw (ParamIDs::compAttack),
                        raw (ParamIDs::compRelease), raw (ParamIDs::compAuto), raw (ParamIDs::compMakeUp), raw (ParamIDs::compCharacter),
                        raw (ParamIDs::dynamicsLink) };
+    gateParameters = { raw (ParamIDs::gateOn), raw (ParamIDs::gateThreshold), raw (ParamIDs::gateMinus30), raw (ParamIDs::gateRange),
+                       raw (ParamIDs::gateExpander), raw (ParamIDs::gateRatio), raw (ParamIDs::gateAttack), raw (ParamIDs::gateHold),
+                       raw (ParamIDs::gateRelease), raw (ParamIDs::gateLinear) };
+    scParameters = { raw (ParamIDs::scOn), raw (ParamIDs::scHpf), raw (ParamIDs::scLpf), raw (ParamIDs::scListen), raw (ParamIDs::scHighQ) };
     limitParameters = { raw (ParamIDs::limitOn), raw (ParamIDs::limitThreshold), raw (ParamIDs::limitMakeUp), raw (ParamIDs::limitMode),
                         raw (ParamIDs::limitMix) };
 }
@@ -45,6 +49,10 @@ void ParagonPR7CAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     maxBlockSize = juce::jmax (1, samplesPerBlock);
     sidechain.setSize (2, maxBlockSize);
     compressor.prepare (sampleRate, maxBlockSize);
+    gate.prepare (sampleRate, maxBlockSize);
+    scFilter.prepare (sampleRate);
+    listen.reset (sampleRate, 0.02);
+    listen.setCurrentAndTargetValue (scParameters.listen->load() >= 0.5f ? 1.0f : 0.0f);
     limiter.prepare (sampleRate, maxBlockSize);
     filtersSidechain.prepare (sampleRate);
     for (auto* gain : { &inputGain, &outputGain })
@@ -127,14 +135,25 @@ void ParagonPR7CAudioProcessor::processModules (juce::AudioBuffer<float>& buffer
     constexpr int filtersAtInput = 0, filtersAfterDynamics = 1, filtersInSidechain = 2;   // the IN / POST / SC switch's positions
     filtersIn.process (buffer, numSamples, filterSettings (filtersAtInput));
 
-    // GATE / EXP will go here.
-
-    // What the dynamics listen to: the audio here, through the HPF / LPF
-    // when they're set to SC.
+    // What the gate and compressor listen to: the audio here, through the
+    // HPF / LPF when they're set to SC, and the SC FILTER.
     for (int channel = 0; channel < 2; ++channel)
         sidechain.copyFrom (channel, 0, buffer, juce::jmin (channel, buffer.getNumChannels() - 1), 0, numSamples);
     juce::AudioBuffer<float> detector (sidechain.getArrayOfWritePointers(), 2, 0, numSamples);
     filtersSidechain.process (detector, numSamples, filterSettings (filtersInSidechain));
+    const auto& sc = scParameters;
+    const auto scOn = sc.on->load() >= 0.5f;
+    scFilter.process (detector, numSamples, { scOn, scOn, sc.hpf->load(), sc.lpf->load(),
+                                              sc.highQ->load() >= 0.5f ? ParamRanges::scHighQ : effects::CutFilters::butterworthQ });
+
+    const auto& g = gateParameters;
+    gate.process (buffer, detector, numSamples,
+                  { g.on->load() >= 0.5f, g.threshold->load() - (g.minus30->load() >= 0.5f ? 30.0f : 0.0f), g.range->load(),
+                    g.expander->load() >= 0.5f, g.ratio->load(),
+                    (effects::Gate::Attack) juce::jlimit (0, 2, juce::roundToInt (g.attack->load())),
+                    g.hold->load(), g.release->load(), g.linear->load() >= 0.5f, compParameters.link->load() >= 0.5f });
+    for (int channel = 0; channel < 2; ++channel)
+        getGainReduction (Dynamics::gate, channel).push (gate.getReductionDb (channel));
 
     const auto& c = compParameters;
     compressor.process (buffer, detector, numSamples,
@@ -165,6 +184,21 @@ void ParagonPR7CAudioProcessor::processModules (juce::AudioBuffer<float>& buffer
         getGainReduction (Dynamics::limit, channel).push (limiter.getReductionDb (channel));
 
     // SATURATION, the console colour and the stereo tools will go here.
+
+    // LISTEN: hear what the gate and compressor hear instead (a 20 ms crossfade).
+    listen.setTargetValue (sc.listen->load() >= 0.5f ? 1.0f : 0.0f);
+    if (listen.isSmoothing() || listen.getCurrentValue() > 0.0f)
+    {
+        for (int i = 0; i < numSamples; ++i)
+        {
+            const auto amount = listen.getNextValue();
+            for (int channel = 0; channel < buffer.getNumChannels(); ++channel)
+            {
+                auto* samples = buffer.getWritePointer (channel);
+                samples[i] += (detector.getSample (juce::jmin (channel, 1), i) - samples[i]) * amount;
+            }
+        }
+    }
 }
 
 void ParagonPR7CAudioProcessor::pushMeters (std::array<LevelMeterSource, 2>& meters, const juce::AudioBuffer<float>& buffer, int numSamples) noexcept

@@ -17,6 +17,15 @@ Each version's notes appear on its GitHub Release page.
   - Three modes: **BRICK**, a hard ceiling; **SOFT**, which eases in from 3 dB below the threshold and lets go gently; and **AUTO**, which lets go quickly after short peaks and slowly under steady limiting.
   - It has no look-ahead, so it adds **no delay** to the track. The trade-off: when it's limiting hard, the very start of each peak is squared off slightly, as on a hardware limiter.
   - **LINK** now works for the limiter too. The **LIMIT** meters show how much it's turning down.
+- **The gate / expander works:**
+  - THRESHOLD, with **−30** for quiet material, and RANGE: how far it turns down when closed.
+  - As a **gate** it opens and shuts, with a 3 dB margin so it doesn't chatter on notes sitting at the threshold. With **EXP** it's an expander: quiet parts are turned down gradually, by the RATIO.
+  - **FAST / MED / SLOW** set how quickly it opens. **HOLD** keeps it open after the sound drops. **RELEASE** sets how long it takes to close: quick at first and then easing off, or at a steady rate with **LINEAR**.
+  - **LINK** covers the gate too. The **GR** meters show how much it's turning down.
+- **The SC FILTER works:**
+  - An HPF and LPF on what the gate and compressor listen to. The audio itself isn't filtered.
+  - **HIGH Q** makes the filters resonate, so the gate or compressor focuses on the frequencies at the cutoff (a kick's thump, say).
+  - **LISTEN** lets you hear what they hear while you set it up.
 - **Fixed:** at the start of playback, the filters and EQ faded in over a few milliseconds instead of starting at their settings.
 
 ## 0.2.0

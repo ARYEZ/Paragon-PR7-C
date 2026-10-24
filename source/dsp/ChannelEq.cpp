@@ -113,6 +113,7 @@ namespace effects
         for (auto* filter : { &highPass, &lowPass })
         {
             filter->frequency.reset (sampleRate, 0.05);
+            filter->q.reset (sampleRate, 0.05);
             filter->wet.reset (sampleRate, 0.02);
         }
         reset();
@@ -133,16 +134,19 @@ namespace effects
             // Playback is starting: be at the settings from the first sample.
             fresh = false;
             highPass.frequency.setCurrentAndTargetValue (settings.highPassFrequency);
+            highPass.q.setCurrentAndTargetValue (settings.q);
+            lowPass.q.setCurrentAndTargetValue (settings.q);
             highPass.wet.setCurrentAndTargetValue (settings.highPass ? 1.0f : 0.0f);
             lowPass.frequency.setCurrentAndTargetValue (settings.lowPassFrequency);
             lowPass.wet.setCurrentAndTargetValue (settings.lowPass ? 1.0f : 0.0f);
         }
-        process (highPass, true, buffer, numSamples, settings.highPass, settings.highPassFrequency);
-        process (lowPass, false, buffer, numSamples, settings.lowPass, settings.lowPassFrequency);
+        process (highPass, true, buffer, numSamples, settings.highPass, settings.highPassFrequency, settings.q);
+        process (lowPass, false, buffer, numSamples, settings.lowPass, settings.lowPassFrequency, settings.q);
     }
 
-    void CutFilters::process (Filter& filter, bool isHighPass, juce::AudioBuffer<float>& buffer, int numSamples, bool on, float frequency) noexcept
+    void CutFilters::process (Filter& filter, bool isHighPass, juce::AudioBuffer<float>& buffer, int numSamples, bool on, float frequency, float q) noexcept
     {
+        filter.q.setTargetValue (q);
         // Snap the frequency while it's off, so it doesn't sweep in from an
         // old setting when switched on.
         if (filter.wet.getCurrentValue() <= 0.0f && ! filter.wet.isSmoothing())
@@ -162,7 +166,8 @@ namespace effects
         {
             const auto length = juce::jmin (updateInterval, numSamples - start);
             const auto f = filter.frequency.skip (length);
-            const auto coefficients = isHighPass ? Biquad::highPass (sampleRate, f) : Biquad::lowPass (sampleRate, f);
+            const auto filterQ = filter.q.skip (length);
+            const auto coefficients = isHighPass ? Biquad::highPass (sampleRate, f, filterQ) : Biquad::lowPass (sampleRate, f, filterQ);
 
             if (! filter.wet.isSmoothing())
             {

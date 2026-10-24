@@ -73,16 +73,17 @@ namespace effects
                               (a + 1.0) - (a - 1.0) * cosW - twoRootAAlpha);
         }
 
-        // 12 dB/octave Butterworth (Q = 0.707): -3 dB at `frequency`.
-        static Coefficients highPass (double sampleRate, double frequency) noexcept
+        // 12 dB/octave; at the default Q (0.707, Butterworth) -3 dB at
+        // `frequency`. A higher Q gives a resonant bump at the cutoff.
+        static Coefficients highPass (double sampleRate, double frequency, double q = juce::MathConstants<double>::sqrt2 * 0.5) noexcept
         {
-            const auto [cosW, alpha] = prewarp (sampleRate, frequency, juce::MathConstants<double>::sqrt2 * 0.5);
+            const auto [cosW, alpha] = prewarp (sampleRate, frequency, q);
             return normalise ((1.0 + cosW) * 0.5, -(1.0 + cosW), (1.0 + cosW) * 0.5, 1.0 + alpha, -2.0 * cosW, 1.0 - alpha);
         }
 
-        static Coefficients lowPass (double sampleRate, double frequency) noexcept
+        static Coefficients lowPass (double sampleRate, double frequency, double q = juce::MathConstants<double>::sqrt2 * 0.5) noexcept
         {
-            const auto [cosW, alpha] = prewarp (sampleRate, frequency, juce::MathConstants<double>::sqrt2 * 0.5);
+            const auto [cosW, alpha] = prewarp (sampleRate, frequency, q);
             return normalise ((1.0 - cosW) * 0.5, 1.0 - cosW, (1.0 - cosW) * 0.5, 1.0 + alpha, -2.0 * cosW, 1.0 - alpha);
         }
 

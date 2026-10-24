@@ -6,11 +6,12 @@
 #include "Parameters.h"
 #include "dsp/ChannelEq.h"
 #include "dsp/Compressor.h"
+#include "dsp/Gate.h"
 #include "dsp/Limiter.h"
 
 // The channel strip. True stereo (stereo in, stereo out), or mono in, mono
-// out on a mono track. So far: INPUT, the HPF / LPF, the compressor, the
-// five-band EQ, the limiter, the OUTPUT column (Ø, MUTE, OUTPUT TRIM and the fader) and
+// out on a mono track. So far: INPUT, the HPF / LPF, the gate / expander
+// and SC FILTER, the compressor, the five-band EQ, the limiter, the OUTPUT column (Ø, MUTE, OUTPUT TRIM and the fader) and
 // the meters. The other modules are built one at a time (see CLAUDE.md).
 class ParagonPR7CAudioProcessor final : public juce::AudioProcessor
 {
@@ -86,8 +87,16 @@ private:
     };
     effects::CutFilters::Settings filterSettings (int placement) const noexcept;
 
-    // The compressor, and its sidechain: what its detector hears (the audio,
-    // through the HPF / LPF when they're set to SC).
+    // The gate and compressor, and their shared sidechain: what their
+    // detectors hear (the audio at the gate's input, through the HPF / LPF
+    // when they're set to SC, and the SC FILTER). LISTEN plays it.
+    struct GateParameters { std::atomic<float>* on, * threshold, * minus30, * range, * expander, * ratio, * attack, * hold, * release, * linear; };
+    struct ScParameters { std::atomic<float>* on, * hpf, * lpf, * listen, * highQ; };
+    GateParameters gateParameters {};
+    ScParameters scParameters {};
+    effects::Gate gate;
+    effects::CutFilters scFilter;
+    juce::SmoothedValue<float> listen { 0.0f };
     struct CompParameters { std::atomic<float>* on, * threshold, * ratio, * attack, * release, * autoRelease, * makeUp, * character, * link; };
     CompParameters compParameters {};
     effects::Compressor compressor;

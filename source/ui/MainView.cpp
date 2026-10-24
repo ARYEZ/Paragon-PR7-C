@@ -406,6 +406,33 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
     attachButton ("dynamics.link", ParamIDs::dynamicsLink,
                   "LINK: the gate, compressor and limiter turn both channels down together, from the louder one, so the stereo image stays put");
 
+    // GATE / EXP and SC FILTER (step 5).
+    attachButton ("gate.on", ParamIDs::gateOn, "Gate / expander on/off");
+    attachKnob ("gate.threshold", ParamIDs::gateThreshold, { { -60.0f, "-60" }, { -40.0f, "-40" }, { -20.0f, "-20" }, { 0.0f, "0" } },
+                "Threshold (dBFS): below this the gate closes (or the expander turns down). With -30, the whole range is 30 dB lower.");
+    attachKnob ("gate.range", ParamIDs::gateRange, { { 0.0f, "0" }, { 20.0f, "20" }, { 40.0f, "40" }, { 60.0f, "60" }, { 80.0f, "80" } },
+                "Range (dB): how far it turns down when closed. 0 does nothing; small amounts just tidy up.");
+    attachButton ("gate.minus30", ParamIDs::gateMinus30, "-30: shifts the threshold 30 dB lower (-90 to -30 dBFS), for quiet material");
+    attachButton ("gate.exp", ParamIDs::gateExpander,
+                  "EXP: an expander instead of a gate. Quiet parts are turned down gradually, by the ratio, rather than shut off.");
+    attachChoice ({ "gate.fast", "gate.med", "gate.slow" }, ParamIDs::gateAttack);
+    attachKnob ("gate.hold", ParamIDs::gateHold, { { 0.0f, "0" }, { 50.0f, "50" }, { 500.0f, "500" } },
+                "Hold (ms): how long it stays open after the sound drops, before it starts to close. Stops it chattering between hits.");
+    attachKnob ("gate.release", ParamIDs::gateRelease, { { 5.0f, "5" }, { 50.0f, "50" }, { 500.0f, "500" }, { 3000.0f, "3s" } },
+                "Release (ms): how long it takes to close");
+    attachKnob ("gate.ratio", ParamIDs::gateRatio, { { 1.0f, "1:1" }, { 1.5f, "1.5:1" }, { 3.0f, "3:1" }, { 6.0f, "6:1" }, { 20.0f, "20:1" } },
+                "Ratio (EXP only): below the threshold, each dB quieter is turned down this much more");
+    attachSwitch ("gate.linear", ParamIDs::gateLinear,
+                  "LINEAR (up): closes at a steady rate. Down: the usual curve, quick at first and then easing off.", true);
+
+    attachButton ("sc.on", ParamIDs::scOn, "SC FILTER on/off: filters what the gate and compressor listen to. The audio isn't filtered.");
+    attachKnob ("sc.hpf", ParamIDs::scHpf, { { 20.0f, "20" }, { 60.0f, "60" }, { 200.0f, "200" } },
+                "Sidechain HPF: the gate and compressor ignore lows below it (so a bass or kick doesn't set them off)");
+    attachKnob ("sc.lpf", ParamIDs::scLpf, { { 1000.0f, "1k" }, { 4500.0f, "4.5k" }, { 20000.0f, "20k" } },
+                "Sidechain LPF: the gate and compressor ignore highs above it (so cymbals don't set them off)");
+    attachButton ("sc.listen", ParamIDs::scListen, "LISTEN: hear what the gate and compressor hear, to set the filters. Turn it off to hear the music again.");
+    attachButton ("sc.highQ", ParamIDs::scHighQ, "HIGH Q: resonant sidechain filters, focusing the gate and compressor on the frequencies at the cutoffs");
+
     // LIMIT (step 4).
     attachButton ("limit.on", ParamIDs::limitOn, "Limiter on/off. A peak limiter with no look-ahead, so it adds no delay.");
     attachKnob ("limit.threshold", ParamIDs::limitThreshold,
@@ -481,13 +508,19 @@ void MainView::attachButton (const juce::String& controlId, const juce::String& 
         client->setTooltip (tooltip);
 }
 
-void MainView::attachSwitch (const juce::String& controlId, const juce::String& parameterId, const juce::String& tooltip)
+void MainView::attachSwitch (const juce::String& controlId, const juce::String& parameterId, const juce::String& tooltip, bool upIsOn)
 {
     auto* lever = dynamic_cast<LeverSwitch*> (findControl (controlId));
     auto* parameter = processor.getParameters().getParameter (parameterId);
     jassert (lever != nullptr && parameter != nullptr);
-    auto attachment = std::make_unique<juce::ParameterAttachment> (*parameter, [lever] (float value) { lever->setPosition (juce::roundToInt (value)); });
-    lever->onChange = [lever, raw = attachment.get()] { raw->setValueAsCompleteGesture ((float) lever->getPosition()); };
+    auto attachment = std::make_unique<juce::ParameterAttachment> (*parameter, [lever, upIsOn] (float value)
+    {
+        lever->setPosition (upIsOn ? (value >= 0.5f ? 0 : 1) : juce::roundToInt (value));
+    });
+    lever->onChange = [lever, upIsOn, raw = attachment.get()]
+    {
+        raw->setValueAsCompleteGesture (upIsOn ? (lever->getPosition() == 0 ? 1.0f : 0.0f) : (float) lever->getPosition());
+    };
     attachment->sendInitialUpdate();
     switchAttachments.push_back (std::move (attachment));
     lever->setTooltip (tooltip);

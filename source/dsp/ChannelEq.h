@@ -71,7 +71,10 @@ namespace effects
         {
             bool highPass = false, lowPass = false;   // on, at this place in the chain
             float highPassFrequency = 80.0f, lowPassFrequency = 18000.0f;
+            float q = butterworthQ;   // higher: resonant (the SC FILTER's HIGH Q)
         };
+
+        static constexpr float butterworthQ = 0.7071f;
 
         void process (juce::AudioBuffer<float>&, int numSamples, const Settings&) noexcept;
 
@@ -79,11 +82,11 @@ namespace effects
         struct Filter
         {
             std::array<Biquad, 2> biquads;
-            juce::SmoothedValue<float, juce::ValueSmoothingTypes::Multiplicative> frequency { 1000.0f };
+            juce::SmoothedValue<float, juce::ValueSmoothingTypes::Multiplicative> frequency { 1000.0f }, q { butterworthQ };
             juce::SmoothedValue<float> wet { 0.0f };
         };
 
-        void process (Filter&, bool highPass, juce::AudioBuffer<float>&, int numSamples, bool on, float frequency) noexcept;
+        void process (Filter&, bool highPass, juce::AudioBuffer<float>&, int numSamples, bool on, float frequency, float q) noexcept;
 
         double sampleRate = 48000.0;
         bool fresh = true;      // the first block after prepare / reset: jump to the settings, no fade

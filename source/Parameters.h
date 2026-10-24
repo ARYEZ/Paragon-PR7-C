@@ -45,6 +45,25 @@ namespace ParamIDs
     inline constexpr auto limitMode = "limitMode";             // choice: Brick, Soft, Auto
     inline constexpr auto limitMix = "limitMix";               // %
 
+    // GATE / EXP.
+    inline constexpr auto gateOn = "gateOn";
+    inline constexpr auto gateThreshold = "gateThreshold";   // dBFS, before -30
+    inline constexpr auto gateMinus30 = "gateMinus30";       // shifts the threshold down 30 dB
+    inline constexpr auto gateRange = "gateRange";           // dB
+    inline constexpr auto gateExpander = "gateExpander";     // EXP
+    inline constexpr auto gateRatio = "gateRatio";           // the expander's ratio
+    inline constexpr auto gateAttack = "gateAttack";         // choice: Fast, Med, Slow
+    inline constexpr auto gateHold = "gateHold";             // ms
+    inline constexpr auto gateRelease = "gateRelease";       // ms
+    inline constexpr auto gateLinear = "gateLinear";         // LINEAR release
+
+    // SC FILTER: filters in what the gate and compressor listen to.
+    inline constexpr auto scOn = "scOn";
+    inline constexpr auto scHpf = "scHpf";
+    inline constexpr auto scLpf = "scLpf";
+    inline constexpr auto scListen = "scListen";             // hear the sidechain
+    inline constexpr auto scHighQ = "scHighQ";
+
     // LINK, on the LIMIT panel: links the gate, compressor and limiter.
     inline constexpr auto dynamicsLink = "dynamicsLink";
 }
@@ -85,6 +104,14 @@ namespace ParamRanges
 
     inline constexpr float limitThresholdMin = -20.0f, limitMakeUpMax = 12.0f;
     inline const juce::StringArray limitModes { "Brick", "Soft", "Auto" };   // saved by index: only append
+
+    inline constexpr float gateThresholdMin = -60.0f, gateRangeMax = 80.0f;
+    inline constexpr float gateRatioMarks[] = { 1.0f, 1.5f, 3.0f, 6.0f, 20.0f };
+    inline constexpr float gateHoldMarks[] = { 0.0f, 50.0f, 500.0f };              // ms
+    inline constexpr float gateReleaseMin = 5.0f, gateReleaseMax = 3000.0f;        // ms
+    inline const juce::StringArray gateAttacks { "Fast", "Med", "Slow" };        // saved by index: only append
+    inline constexpr float scHpfMin = 20.0f, scHpfMax = 200.0f, scLpfMin = 1000.0f, scLpfMax = 20000.0f;
+    inline constexpr float scHighQ = 2.5f;   // the SC FILTER's resonance with HIGH Q
 
     // RATIO's printed marks, evenly spaced round the knob: SOFT (1), then
     // 1.5:1 to infinite (30). The travel between marks is even in log ratio.

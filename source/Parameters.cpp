@@ -11,34 +11,45 @@ namespace Parameters
         constexpr int eqVersion = 3;      // the EQ and the HPF / LPF
         constexpr int compVersion = 4;    // the compressor and LINK
         constexpr int limitVersion = 5;   // the limiter
+        constexpr int gateVersion = 6;    // the gate / expander and the SC FILTER
 
         // RATIO: the marks evenly round the knob, log-even between them. The
         // bottom stretch (below 1.25) is the SOFT position.
-        juce::NormalisableRange<float> ratioRange()
+        // A knob whose printed marks sit evenly round it: between two marks
+        // the travel is even in log (or straight, from a mark of 0). `snap`
+        // tidies a value (the comp's SOFT stretch).
+        juce::NormalisableRange<float> markedRange (std::vector<float> marks, std::function<float (float)> snap = {})
         {
-            using ParamRanges::compRatioMarks;
-            constexpr auto steps = (float) (std::size (compRatioMarks) - 1);
-            return { compRatioMarks[0], compRatioMarks[std::size (compRatioMarks) - 1],
-                     [] (float, float, float proportion)
+            const auto steps = (float) (marks.size() - 1);
+            auto between = [] (float low, float high, float t) { return low > 0.0f ? low * std::pow (high / low, t) : low + (high - low) * t; };
+            auto within = [] (float low, float high, float value) { return low > 0.0f ? std::log (value / low) / std::log (high / low) : (value - low) / (high - low); };
+            return { marks.front(), marks.back(),
+                     [marks, steps, between] (float, float, float proportion)
                      {
                          const auto position = juce::jlimit (0.0f, 1.0f, proportion) * steps;
                          const auto below = juce::jmin ((int) position, (int) steps - 1);
-                         const auto low = compRatioMarks[below], high = compRatioMarks[below + 1];
-                         return low * std::pow (high / low, position - (float) below);
+                         return between (marks[(size_t) below], marks[(size_t) below + 1], position - (float) below);
                      },
-                     [] (float, float, float ratio)
+                     [marks, steps, within] (float, float, float value)
                      {
-                         for (int i = 1; i < (int) std::size (compRatioMarks); ++i)
-                             if (ratio <= compRatioMarks[i])
-                                 return ((float) (i - 1) + std::log (ratio / compRatioMarks[i - 1]) / std::log (compRatioMarks[i] / compRatioMarks[i - 1])) / steps;
+                         for (size_t i = 1; i < marks.size(); ++i)
+                             if (value <= marks[i])
+                                 return ((float) (i - 1) + within (marks[i - 1], marks[i], juce::jmax (value, marks[i - 1]))) / steps;
                          return 1.0f;
                      },
-                     [] (float, float, float ratio)
+                     [marks, snap] (float, float, float value)
                      {
-                         if (ratio < 1.25f)
-                             return 1.0f;   // SOFT
-                         return juce::jlimit (1.25f, compRatioMarks[std::size (compRatioMarks) - 1], ratio);
+                         value = juce::jlimit (marks.front(), marks.back(), value);
+                         return snap ? snap (value) : value;
                      } };
+        }
+
+        // RATIO: SOFT, then 1.5:1 to infinite. Below 1.25 is the SOFT position.
+        juce::NormalisableRange<float> ratioRange()
+        {
+            using ParamRanges::compRatioMarks;
+            return markedRange ({ std::begin (compRatioMarks), std::end (compRatioMarks) },
+                                [] (float ratio) { return ratio < 1.25f ? 1.0f : ratio; });
         }
 
         juce::String ratioText (float ratio, int)
@@ -65,6 +76,13 @@ namespace Parameters
         }
 
         juce::String asHz (float value, int) { return frequencyText (value); }
+
+        void frequencyOf (juce::AudioProcessorValueTreeState::ParameterLayout& layout, const char* id, const juce::String& name,
+                          float minHz, float maxHz, float defaultHz, int version)
+        {
+            layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id, version }, name, frequencyRange (minHz, maxHz), defaultHz,
+                                                                     juce::AudioParameterFloatAttributes().withLabel ("Hz").withStringFromValueFunction (asHz)));
+        }
         juce::String asQ (float value, int) { return juce::String (value, 2); }
 
         juce::String asDb (float value, int)
@@ -252,6 +270,45 @@ namespace Parameters
             juce::ParameterID { ParamIDs::limitMix, limitVersion }, "Limit Mix",
             juce::NormalisableRange<float> (0.0f, 100.0f, 1.0f), 100.0f,
             juce::AudioParameterFloatAttributes().withLabel ("%").withStringFromValueFunction ([] (float v, int) { return juce::String (juce::roundToInt (v)) + "%"; })));
+        // GATE / EXP.
+        using namespace ParamRanges;
+        const auto gateBool = [&] (const char* id, const juce::String& name, bool on)
+        {
+            layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id, gateVersion }, name, on,
+                                                                    juce::AudioParameterBoolAttributes().withStringFromValueFunction (onOff)));
+        };
+        gateBool (ParamIDs::gateOn, "Gate", false);
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { ParamIDs::gateThreshold, gateVersion }, "Gate Threshold",
+            juce::NormalisableRange<float> (gateThresholdMin, 0.0f, 0.1f), -40.0f,
+            juce::AudioParameterFloatAttributes().withLabel ("dB").withStringFromValueFunction (asDb)));
+        gateBool (ParamIDs::gateMinus30, "Gate -30", false);
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { ParamIDs::gateRange, gateVersion }, "Gate Range",
+            juce::NormalisableRange<float> (0.0f, gateRangeMax, 0.1f), 40.0f,
+            juce::AudioParameterFloatAttributes().withLabel ("dB").withStringFromValueFunction ([] (float v, int) { return juce::String (v, 1) + " dB"; })));
+        gateBool (ParamIDs::gateExpander, "Gate Expander", false);
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { ParamIDs::gateRatio, gateVersion }, "Gate Ratio",
+            markedRange ({ std::begin (gateRatioMarks), std::end (gateRatioMarks) }), 2.0f,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int) { return juce::String (v, v < 10.0f ? 1 : 0) + ":1"; })));
+        layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { ParamIDs::gateAttack, gateVersion }, "Gate Attack",
+                                                                  gateAttacks, 1));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { ParamIDs::gateHold, gateVersion }, "Gate Hold",
+            markedRange ({ std::begin (gateHoldMarks), std::end (gateHoldMarks) }), 50.0f,
+            juce::AudioParameterFloatAttributes().withLabel ("ms").withStringFromValueFunction (asMs)));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { ParamIDs::gateRelease, gateVersion }, "Gate Release", frequencyRange (gateReleaseMin, gateReleaseMax), 200.0f,
+            juce::AudioParameterFloatAttributes().withLabel ("ms").withStringFromValueFunction (asMs)));
+        gateBool (ParamIDs::gateLinear, "Gate Linear Release", false);
+
+        // SC FILTER.
+        gateBool (ParamIDs::scOn, "SC Filter", false);
+        frequencyOf (layout, ParamIDs::scHpf, "SC HPF", scHpfMin, scHpfMax, 60.0f, gateVersion);
+        frequencyOf (layout, ParamIDs::scLpf, "SC LPF", scLpfMin, scLpfMax, 20000.0f, gateVersion);
+        gateBool (ParamIDs::scListen, "SC Listen", false);
+        gateBool (ParamIDs::scHighQ, "SC High Q", false);
         return layout;
     }
 }
