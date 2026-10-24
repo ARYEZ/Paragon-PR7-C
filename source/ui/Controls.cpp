@@ -35,6 +35,14 @@ Knob::Knob (std::vector<juce::String> scale, juce::String unitText, juce::String
     setInterceptsMouseClicks (false, true);   // only the knob itself takes the mouse, not its printed scale
 }
 
+void Knob::setTravel (float start, float end)
+{
+    travelStart = start;
+    travelEnd = end;
+    slider.setRotaryParameters (start, end, true);
+    repaint();
+}
+
 void Knob::addLabel (float proportion, juce::String text)
 {
     labels.emplace_back (proportion, std::move (text));
@@ -71,7 +79,7 @@ void Knob::paint (juce::Graphics& g)
     g.setFont (juce::FontOptions (12.0f, juce::Font::bold));
     for (const auto& [proportion, text] : marks)
     {
-        const auto angle = startAngle + proportion * (endAngle - startAngle);
+        const auto angle = travelStart + proportion * (travelEnd - travelStart);
         g.setColour (Finish::inkDim());
         g.drawLine ({ onCircle (knobCentre, radius + 2.0f, angle), onCircle (knobCentre, radius + 6.0f, angle) }, 1.2f);
     }
@@ -81,7 +89,7 @@ void Knob::paint (juce::Graphics& g)
         printBeside (g, proportion, text);
 
     const auto proportion = (float) slider.valueToProportionOfLength (slider.getValue());
-    drawKnob (g, knobCentre, radius, startAngle + proportion * (endAngle - startAngle));
+    drawKnob (g, knobCentre, radius, travelStart + proportion * (travelEnd - travelStart), travelStart, travelEnd);
 
     auto below = getLocalBounds().toFloat().withTop (knobCentre.y + radius + 4.0f);
     if (unit.isNotEmpty())
@@ -100,7 +108,7 @@ void Knob::paint (juce::Graphics& g)
 void Knob::printBeside (juce::Graphics& g, float proportion, const juce::String& text) const
 {
     // Set the label's box against the ring, whichever side it's on.
-    const auto angle = startAngle + proportion * (endAngle - startAngle);
+    const auto angle = travelStart + proportion * (travelEnd - travelStart);
     const auto width = (float) juce::GlyphArrangement::getStringWidthInt (g.getCurrentFont(), text) + 2.0f;
     const auto height = 13.0f;
     const auto anchor = onCircle (knobCentre, radius + 8.0f, angle);
@@ -109,7 +117,7 @@ void Knob::printBeside (juce::Graphics& g, float proportion, const juce::String&
                                          juce::Justification::centred, Finish::ink());
 }
 
-void Knob::drawKnob (juce::Graphics& g, juce::Point<float> c, float ringRadius, float angle)
+void Knob::drawKnob (juce::Graphics& g, juce::Point<float> c, float ringRadius, float angle, float travelStart, float travelEnd)
 {
     const auto r = ringRadius;
     const auto capRadius = r * 0.72f;
@@ -122,7 +130,7 @@ void Knob::drawKnob (juce::Graphics& g, juce::Point<float> c, float ringRadius, 
         juce::Path disc;
         disc.addEllipse (circle (r));
         juce::DropShadow (juce::Colours::black.withAlpha (0.55f), juce::roundToInt (r * 0.4f), { 0, juce::roundToInt (r * 0.14f) }).drawForPath (g, disc);
-        for (auto end : { startAngle, endAngle })
+        for (auto end : { travelStart, travelEnd })
         {
             const auto spot = onCircle (c, r * 0.9f, end);
             g.setGradientFill (juce::ColourGradient (ringNeon.withAlpha (0.4f), spot, ringNeon.withAlpha (0.0f), spot.translated (r * 0.5f, 0.0f), true));
@@ -141,7 +149,7 @@ void Knob::drawKnob (juce::Graphics& g, juce::Point<float> c, float ringRadius, 
         g.setColour (juce::Colour (0xff0b0605));
         g.drawEllipse (circle (grooveRadius), r * 0.14f);
         juce::Path arc;
-        arc.addCentredArc (c.x, c.y, grooveRadius, grooveRadius, 0.0f, startAngle, endAngle, true);
+        arc.addCentredArc (c.x, c.y, grooveRadius, grooveRadius, 0.0f, travelStart, travelEnd, true);
         const auto stroke = [&] (juce::Colour colour, float width)
         {
             g.setColour (colour);
@@ -153,7 +161,7 @@ void Knob::drawKnob (juce::Graphics& g, juce::Point<float> c, float ringRadius, 
         stroke (ringCore, r * 0.022f);
 
         // Hot spots where the ring ends, as on the concept.
-        for (auto end : { startAngle, endAngle })
+        for (auto end : { travelStart, travelEnd })
         {
             const auto spot = onCircle (c, grooveRadius, end);
             g.setColour (ringCore.withAlpha (0.8f));

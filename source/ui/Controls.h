@@ -37,12 +37,18 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
 
-    // The travel: from the bottom left (7:30) round to the bottom right (4:30).
+    // The usual travel: from the bottom left (7:30) round to the bottom right (4:30).
     static constexpr float startAngle = juce::MathConstants<float>::pi * 1.25f;
     static constexpr float endAngle = juce::MathConstants<float>::pi * 2.75f;
 
+    // A shorter travel, in radians clockwise from 12 o'clock (the small Q
+    // knobs turn from 9 o'clock to 3, with their scale round the top). The
+    // ring of light follows it.
+    void setTravel (float start, float end);
+
     // The knob itself, for anything else that wants one.
-    static void drawKnob (juce::Graphics&, juce::Point<float> centre, float ringRadius, float angle);
+    static void drawKnob (juce::Graphics&, juce::Point<float> centre, float ringRadius, float angle,
+                          float travelStart = startAngle, float travelEnd = endAngle);
 
 private:
     void printBeside (juce::Graphics&, float proportion, const juce::String& text) const;
@@ -51,6 +57,7 @@ private:
     juce::String unit, caption;
     juce::Point<float> knobCentre;   // in this component
     float radius = 30.0f;
+    float travelStart = startAngle, travelEnd = endAngle;
 };
 
 // A module's status lamp (or COMP's AUTO): a glowing red-orange lens when on.

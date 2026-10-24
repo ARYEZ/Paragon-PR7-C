@@ -78,7 +78,7 @@ public:
     static constexpr const char* consoleButtonProperty = "consoleButton";
     static constexpr const char* alertProperty = "alert";
     // On a console button: draw a small icon instead of its text. One of
-    // "phase" (Ø), "shape" (a shelf curve, or a bell when on), "left",
+    // "phase" (Ø), "shape" (a shelf curve when on, a bell when off), "left",
     // "right", "dots" or "gear".
     static constexpr const char* iconProperty = "icon";
     // On a console button: an LED that lights with it, left of its text

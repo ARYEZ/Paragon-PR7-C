@@ -4,11 +4,12 @@
 
 #include "LevelMeterSource.h"
 #include "Parameters.h"
+#include "dsp/ChannelEq.h"
 
 // The channel strip. True stereo (stereo in, stereo out), or mono in, mono
-// out on a mono track. For now it has INPUT, the OUTPUT column (Ø, MUTE,
-// OUTPUT TRIM and the fader) and the meters; the modules are built one at a
-// time (see CLAUDE.md).
+// out on a mono track. So far: INPUT, the HPF / LPF, the five-band EQ, the
+// OUTPUT column (Ø, MUTE, OUTPUT TRIM and the fader) and the meters. The
+// other modules are built one at a time (see CLAUDE.md).
 class ParagonPR7CAudioProcessor final : public juce::AudioProcessor
 {
 public:
@@ -61,6 +62,19 @@ private:
     std::atomic<float>* outputTrim = nullptr;
     std::atomic<float>* phaseInvert = nullptr;
     std::atomic<float>* mute = nullptr;
+
+    // The HPF / LPF, in each place they can sit in the chain (IN and POST;
+    // in SC they leave the audio alone), and the EQ bands, top to bottom.
+    struct FilterParameters { std::atomic<float>* hpfOn, * hpfFrequency, * lpfOn, * lpfFrequency, * placement; };
+    struct BandParameters { std::atomic<float>* on, * frequency, * gain, * q, * shelf; };   // q or shelf is null
+    FilterParameters filterParameters {};
+    std::array<BandParameters, std::size (ParamRanges::eqBands)> bandParameters {};
+    effects::CutFilters filtersIn, filtersPost;
+    std::array<effects::EqBand, std::size (ParamRanges::eqBands)> eqBands {
+        effects::EqBand (effects::EqBand::Shelf::high), effects::EqBand (effects::EqBand::Shelf::none), effects::EqBand (effects::EqBand::Shelf::none),
+        effects::EqBand (effects::EqBand::Shelf::low), effects::EqBand (effects::EqBand::Shelf::low)
+    };
+    effects::CutFilters::Settings filterSettings (int placement) const noexcept;
 
     // Every gain change glides over 20 ms, so nothing clicks. The output's
     // polarity, trim, fader and mute are one gain: flipping the polarity

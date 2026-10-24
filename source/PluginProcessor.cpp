@@ -13,6 +13,16 @@ ParagonPR7CAudioProcessor::ParagonPR7CAudioProcessor()
       phaseInvert (parameters.getRawParameterValue (ParamIDs::phaseInvert)),
       mute (parameters.getRawParameterValue (ParamIDs::mute))
 {
+    filterParameters = { parameters.getRawParameterValue (ParamIDs::hpfOn), parameters.getRawParameterValue (ParamIDs::hpfFreq),
+                         parameters.getRawParameterValue (ParamIDs::lpfOn), parameters.getRawParameterValue (ParamIDs::lpfFreq),
+                         parameters.getRawParameterValue (ParamIDs::filterPlacement) };
+    for (size_t i = 0; i < bandParameters.size(); ++i)
+    {
+        const auto* id = ParamRanges::eqBands[i].id;
+        bandParameters[i] = { parameters.getRawParameterValue (ParamIDs::eqOn (id)), parameters.getRawParameterValue (ParamIDs::eqFreq (id)),
+                              parameters.getRawParameterValue (ParamIDs::eqGain (id)), parameters.getRawParameterValue (ParamIDs::eqQ (id)),
+                              parameters.getRawParameterValue (ParamIDs::eqShelf (id)) };   // the one the band doesn't have is null
+    }
 }
 
 bool ParagonPR7CAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -29,7 +39,19 @@ void ParagonPR7CAudioProcessor::prepareToPlay (double sampleRate, int)
     for (auto* gain : { &inputGain, &outputGain })
         gain->reset (sampleRate, 0.02);
     inputGain.setCurrentAndTargetValue (juce::Decibels::decibelsToGain (inputGainDb->load()));
+    for (auto* filters : { &filtersIn, &filtersPost })
+        filters->prepare (sampleRate);
+    for (auto& band : eqBands)
+        band.prepare (sampleRate);
     outputGain.setCurrentAndTargetValue (targetOutputGain());
+}
+
+effects::CutFilters::Settings ParagonPR7CAudioProcessor::filterSettings (int placement) const noexcept
+{
+    // The filters only touch the audio when the switch puts them here.
+    const auto here = juce::roundToInt (filterParameters.placement->load()) == placement;
+    return { here && filterParameters.hpfOn->load() >= 0.5f, here && filterParameters.lpfOn->load() >= 0.5f,
+             filterParameters.hpfFrequency->load(), filterParameters.lpfFrequency->load() };
 }
 
 float ParagonPR7CAudioProcessor::targetOutputGain() const noexcept
@@ -73,7 +95,22 @@ void ParagonPR7CAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
     applyGain (buffer, inputGain, numSamples);
     pushMeters (inputMeters, buffer, numSamples);
 
-    // The modules will go here, in their fixed order (see CLAUDE.md).
+    // The modules, in their fixed order (see CLAUDE.md).
+    constexpr int filtersAtInput = 0, filtersAfterDynamics = 1;   // the IN / POST / SC switch's positions
+    filtersIn.process (buffer, numSamples, filterSettings (filtersAtInput));
+
+    // GATE / EXP and COMP will go here.
+
+    for (size_t i = 0; i < eqBands.size(); ++i)
+    {
+        const auto& p = bandParameters[i];
+        eqBands[i].process (buffer, numSamples, { p.on->load() >= 0.5f, p.frequency->load(), p.gain->load(),
+                                                  p.q != nullptr ? p.q->load() : 1.0f, p.shelf != nullptr && p.shelf->load() >= 0.5f });
+    }
+
+    filtersPost.process (buffer, numSamples, filterSettings (filtersAfterDynamics));
+
+    // LIMIT, SATURATION, the console colour and the stereo tools will go here.
 
     outputGain.setTargetValue (targetOutputGain());
     applyGain (buffer, outputGain, numSamples);

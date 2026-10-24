@@ -838,11 +838,11 @@ void ParagonLookAndFeel::drawIcon (juce::Graphics& g, const juce::String& icon, 
     if (icon == "shape")
     {
         // The band's curve, glowing orange as on the concept: a shelf (a
-        // step up), or a bell when on.
+        // step up) when on, a bell when off.
         const auto box = juce::Rectangle<float> (juce::jmin (area.getWidth(), size * 2.6f), size * 0.6f).withCentre (c);
         juce::Path curve;
         curve.startNewSubPath (box.getX(), box.getBottom());
-        if (on)
+        if (! on)
         {
             curve.lineTo (box.getX() + box.getWidth() * 0.22f, box.getBottom());
             curve.cubicTo (box.getCentreX() - box.getWidth() * 0.12f, box.getBottom(), box.getCentreX() - box.getWidth() * 0.1f, box.getY(), box.getCentreX(), box.getY());

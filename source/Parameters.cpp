@@ -8,6 +8,19 @@ namespace Parameters
         // which plugin version added it.
         constexpr int firstVersion = 1;
         constexpr int panelVersion = 2;   // the OUTPUT column of the full panel layout
+        constexpr int eqVersion = 3;      // the EQ and the HPF / LPF
+
+        // A frequency knob: even travel per octave.
+        juce::NormalisableRange<float> frequencyRange (float minHz, float maxHz)
+        {
+            return { minHz, maxHz,
+                     [] (float start, float end, float proportion) { return start * std::pow (end / start, proportion); },
+                     [] (float start, float end, float hz) { return std::log (hz / start) / std::log (end / start); },
+                     [] (float start, float end, float hz) { return juce::jlimit (start, end, hz); } };
+        }
+
+        juce::String asHz (float value, int) { return frequencyText (value); }
+        juce::String asQ (float value, int) { return juce::String (value, 2); }
 
         juce::String asDb (float value, int)
         {
@@ -79,6 +92,13 @@ namespace Parameters
         return low + (high - low) * (position - (float) below);
     }
 
+    juce::String frequencyText (float hz)
+    {
+        if (hz < 1000.0f)
+            return juce::String (juce::roundToInt (hz)) + " Hz";
+        return juce::String (hz / 1000.0f, hz < 10000.0f ? 2 : 1) + " kHz";
+    }
+
     juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
     {
         juce::AudioProcessorValueTreeState::ParameterLayout layout;
@@ -100,6 +120,45 @@ namespace Parameters
         layout.add (std::make_unique<juce::AudioParameterBool> (
             juce::ParameterID { ParamIDs::mute, panelVersion }, "Mute", false,
             juce::AudioParameterBoolAttributes().withStringFromValueFunction (onOff)));
+
+        // HPF / LPF.
+        const auto onSwitch = [&] (const juce::String& id, const juce::String& name, bool on)
+        {
+            layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id, eqVersion }, name, on,
+                                                                    juce::AudioParameterBoolAttributes().withStringFromValueFunction (onOff)));
+        };
+        const auto frequency = [&] (const juce::String& id, const juce::String& name, float minHz, float maxHz, float defaultHz)
+        {
+            layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id, eqVersion }, name, frequencyRange (minHz, maxHz), defaultHz,
+                                                                     juce::AudioParameterFloatAttributes().withLabel ("Hz").withStringFromValueFunction (asHz)));
+        };
+        using namespace ParamRanges;
+        onSwitch (ParamIDs::hpfOn, "HPF", false);
+        frequency (ParamIDs::hpfFreq, "HPF Frequency", hpfMin, hpfMax, hpfDefault);
+        onSwitch (ParamIDs::lpfOn, "LPF", false);
+        frequency (ParamIDs::lpfFreq, "LPF Frequency", lpfMin, lpfMax, lpfDefault);
+        layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { ParamIDs::filterPlacement, eqVersion }, "Filter Placement",
+                                                                  filterPlacements, 0));
+
+        // The EQ bands.
+        for (const auto& band : eqBands)
+        {
+            const juce::String name (band.name);
+            onSwitch (ParamIDs::eqOn (band.id), name, true);
+            frequency (ParamIDs::eqFreq (band.id), name + " Frequency", band.minHz, band.maxHz, band.defaultHz);
+            layout.add (std::make_unique<juce::AudioParameterFloat> (
+                juce::ParameterID { ParamIDs::eqGain (band.id), eqVersion }, name + " Gain",
+                juce::NormalisableRange<float> (-eqGainRange, eqGainRange, 0.1f), 0.0f,
+                juce::AudioParameterFloatAttributes().withLabel ("dB").withStringFromValueFunction (asDb)));
+            if (band.hasQ)
+                layout.add (std::make_unique<juce::AudioParameterFloat> (
+                    juce::ParameterID { ParamIDs::eqQ (band.id), eqVersion }, name + " Q", frequencyRange (eqQMin, eqQMax), 1.0f,
+                    juce::AudioParameterFloatAttributes().withStringFromValueFunction (asQ)));
+            else
+                layout.add (std::make_unique<juce::AudioParameterBool> (
+                    juce::ParameterID { ParamIDs::eqShelf (band.id), eqVersion }, name + " Shelf", band.shelfByDefault,
+                    juce::AudioParameterBoolAttributes().withStringFromValueFunction ([] (bool shelf, int) { return shelf ? "Shelf" : "Bell"; })));
+        }
         return layout;
     }
 }

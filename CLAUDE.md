@@ -14,10 +14,11 @@ Unlike PR7-B and PR7-V, it is **not** a copy of PR7-G. It was seeded lean: PR7-G
 
 - **The plugin:** true stereo (stereo in/out, or mono in/out on a mono track).
   - Its own identity: `Paragon PR7-C`, plugin code `Pr7c`, bundle `com.paragon.paragonpr7c`, maker code `Prgn`.
-  - Parameters: `inputGain`, `outputTrim`, `outputLevel` (the fader), `phaseInvert`, `mute`. Input and output peak meters (console-calibrated, with OVL), and gain-reduction sources (`getGainReduction`) for the GR meters, which stay at 0 until the dynamics exist.
+  - Parameters: `inputGain`, `outputTrim`, `outputLevel` (the fader), `phaseInvert`, `mute`; the HPF / LPF (`hpfOn`, `hpfFreq`, `lpfOn`, `lpfFreq`, `filterPlacement`); the EQ (`<band>On/Freq/Gain` plus `<band>Q` or `<band>Shelf`, bands from `ParamRanges::eqBands`). Input and output peak meters (console-calibrated, with OVL), and gain-reduction sources (`getGainReduction`) for the GR meters, which stay at 0 until the dynamics exist.
 - **`source/ui/MainView`:** a fixed **1448 × 1086** canvas, exactly the concept image's size, so coordinates can be read straight off `docs/concept.png`. The editor scales it to the window.
   - **Step 1 is done:** every module's panel is drawn with all its controls, placed as on the concept. `MainView::modules()` holds each module's rectangle.
-  - Controls are registered by ID (`"comp.ratio"`, `"hf.on"`...; see `MainView.cpp`). Most are **inert** (not attached to parameters; tooltips say which step brings them). Each step creates the parameters and attaches its controls, replacing the knob's provisional printed scale with the real one.
+  - Controls are registered by ID (`"comp.ratio"`, `"hf.on"`...; see `MainView.cpp`). Controls of unbuilt modules are **inert** (tooltips say which step brings them). Each step creates the parameters and brings its controls to life with `attachKnob` (prints the scale at the true values and turns on the value popup), `attachButton` and `attachSwitch`.
+- **`source/dsp/`:** `Biquad` (cookbook filters), `ChannelEq` (`EqBand`, `CutFilters`).
   - `source/ui/Controls`: `Knob` (draws itself; its slider only takes the mouse over the knob), `Led`, `LeverSwitch`, `RoundButton`, `GainReductionMeter`. Buttons are `TextButton`s with `ParagonLookAndFeel::consoleButtonProperty`.
 - **Carried over from PR7-G:**
   - `ParagonLookAndFeel` (Inter fonts, knobs, LED/neon bars, piano keys, chrome bezels).
@@ -38,7 +39,7 @@ The **SC FILTER** shapes only the dynamics' **sidechain** (detector), never the 
 
 The behaviour notes below are **modelled on** a classic 1970s/80s British console channel and mastering compressor (the owner supplied a commercial plugin manual as reference). They're described in our own words. **Never use that product's names or trademarks** (see "Names" below).
 
-1. **HPF / LPF.** HPF about 20 Hz–20 kHz (concept scale 40–1.2k), LPF about 1 kHz–30 kHz (scale 3k–30k), 12 dB/octave.
+1. **HPF / LPF. (Built, step 2.)** HPF 20 Hz–2 kHz, LPF 1–20 kHz, 12 dB/octave Butterworth, both off by default. Each fades in/out over 20 ms (on/off and placement changes). In SC they leave the audio alone; the dynamics steps must feed them into the detector (`filterSettings` in the processor).
    - A three-way switch **IN / POST / SC** places them:
      - **IN:** at the input, before everything.
      - **POST:** after the compressor, before the limiter.
@@ -63,12 +64,11 @@ The behaviour notes below are **modelled on** a classic 1970s/80s British consol
    - **ATTACK**, **RELEASE** and an **AUTO** release LED.
    - **GR meter** from -20 to +20 (a "gain change" meter: reduction left, make-up right).
    - Start from `reference/pr7g/CompGate` (the Daybreak type).
-5. **EQ: four bands.** Each band has an on LED, frequency, **GAIN ±15 dB**, and a **shape button** (shelf ↔ bell).
-   - **HF:** about 2–20 kHz; shelf or bell; no Q on the concept.
-   - **HMF:** about 400 Hz–5 kHz; with **Q** (0.5–4).
-   - **MF:** about 150 Hz–2.5 kHz; with **Q** (0.5–4).
-   - **LMF:** about 20–300 Hz; shelf or bell; no Q on the concept.
-   - Musical, broad, "console" curves. Gain-dependent Q (proportional Q) suits this style.
+5. **EQ: five bands. (Built, step 2.)** Each band has an on LED, frequency (even travel per octave), **GAIN ±15 dB**.
+   - **HF** 2–20 kHz, high shelf (default) or bell. **LMF** 40–600 Hz, bell (default) or low shelf. **LF** 20–200 Hz, low shelf (default) or bell. The SHELF key and the curve key are the same switch. As bells they use Q 0.9.
+   - **HMF** 400 Hz–5 kHz and **MF** 150 Hz–2.5 kHz: bells with **Q** 0.5–4 (the small knob turns 9 to 3 o'clock). The concept's curve keys on these two were removed: they'd have done nothing.
+   - Bells use **proportional Q** (our design): Q × 2^((|gain| − 6) / 18), so the knob reads true at ±6 dB, broader for small moves, narrower for big ones. Shelves are the cookbook's slope-1 shelves (no overshoot), the frequency at half the gain.
+   - Changes glide (30 ms; coefficients every 32 samples); shelf↔bell fades the band out and in; a band at 0 dB stops running once its filter has rung out, so defaults are bit-exact.
 6. **LIMIT.**
    - **THRESHOLD** and **MAKE UP**.
    - **BRICK / SOFT / AUTO** modes: brick-wall, soft-knee, and programme-dependent release.
@@ -145,7 +145,7 @@ Settled with the owner during step 1 (after reading a research summary of the re
 
 From the reference research, for reference when building the DSP (treat ranges as approximate): the compressor detector is RMS, the limiter peak-detected (no look-ahead documented); the gate's release is exponential by default (LINEAR switches it); channel 1 is the nominal design.
 
-## Names## Names
+## Names
 
 **No trademarked names or branding** on our modules or controls. Don't use:
 - the console's or the plugin maker's names;

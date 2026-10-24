@@ -13,8 +13,8 @@
 // Every module's panel is drawn with all its controls, placed as on the
 // concept. Most are inert until their module's DSP is built (see CLAUDE.md
 // for the order): each step attaches its controls to parameters, found by
-// their IDs here. Working now: INPUT, Ø, MUTE, OUTPUT TRIM, the fader, the
-// meters, and the finish (from the settings gear).
+// their IDs here. Working now: HPF / LPF, the EQ, INPUT, Ø, MUTE, OUTPUT
+// TRIM, the fader, the meters, and the finish (from the settings gear).
 class MainView final : public juce::Component,
                        private juce::ChangeListener,
                        private juce::Timer
@@ -61,6 +61,14 @@ private:
                             const juce::String& tooltip);
     void addRadioGroup (std::initializer_list<const char*> ids, int group, const char* initiallyOn);
 
+    // Bring a control to life: attach it to its parameter and give it its
+    // real tooltip. A knob's scale is printed at each mark's true place
+    // (given as values), and it shows its value while turned.
+    void attachKnob (const juce::String& controlId, const juce::String& parameterId,
+                     std::vector<std::pair<float, juce::String>> marks, const juce::String& tooltip);
+    void attachButton (const juce::String& controlId, const juce::String& parameterId, const juce::String& tooltip);
+    void attachSwitch (const juce::String& controlId, const juce::String& parameterId, const juce::String& tooltip);
+
     void showSettingsMenu();
 
     ParagonPR7CAudioProcessor& processor;
@@ -77,6 +85,9 @@ private:
     using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
     std::unique_ptr<SliderAttachment> inputAttachment, trimAttachment, faderAttachment;
     std::unique_ptr<ButtonAttachment> phaseAttachment, muteAttachment;
+    std::vector<std::unique_ptr<SliderAttachment>> knobAttachments;
+    std::vector<std::unique_ptr<ButtonAttachment>> buttonAttachments;
+    std::vector<std::unique_ptr<juce::ParameterAttachment>> switchAttachments;
 
     // The satin grain over the panels, made for the current finish.
     juce::Image grain;

@@ -12,6 +12,21 @@ namespace ParamIDs
     inline constexpr auto outputTrim = "outputTrim";     // OUTPUT TRIM, dB
     inline constexpr auto phaseInvert = "phaseInvert";   // Ø: flips the polarity of both channels
     inline constexpr auto mute = "mute";                 // MUTE
+
+    // HPF / LPF, and where they sit (IN / POST / SC).
+    inline constexpr auto hpfOn = "hpfOn";
+    inline constexpr auto hpfFreq = "hpfFreq";
+    inline constexpr auto lpfOn = "lpfOn";
+    inline constexpr auto lpfFreq = "lpfFreq";
+    inline constexpr auto filterPlacement = "filterPlacement";   // choice: In, Post, Sidechain
+
+    // The EQ: "<band>On", "<band>Freq", "<band>Gain", and "<band>Q" (HMF,
+    // MF) or "<band>Shelf" (HF, LMF, LF). Bands: hf, hmf, mf, lmf, lf.
+    inline const juce::String eqOn (const juce::String& band) { return band + "On"; }
+    inline const juce::String eqFreq (const juce::String& band) { return band + "Freq"; }
+    inline const juce::String eqGain (const juce::String& band) { return band + "Gain"; }
+    inline const juce::String eqQ (const juce::String& band) { return band + "Q"; }
+    inline const juce::String eqShelf (const juce::String& band) { return band + "Shelf"; }
 }
 
 namespace ParamRanges
@@ -25,6 +40,30 @@ namespace ParamRanges
     // marks is the same however many dB lie between them: fine control round
     // 0 dB, coarse towards the bottom.
     inline constexpr float faderMarksDb[] = { 10.0f, 5.0f, 0.0f, -5.0f, -10.0f, -20.0f, -30.0f, -40.0f, -60.0f };
+
+    inline constexpr float hpfMin = 20.0f, hpfMax = 2000.0f, hpfDefault = 80.0f;
+    inline constexpr float lpfMin = 1000.0f, lpfMax = 20000.0f, lpfDefault = 18000.0f;
+    inline const juce::StringArray filterPlacements { "In", "Post", "Sidechain" };   // saved by index: only append
+
+    inline constexpr float eqGainRange = 15.0f;   // ±15 dB
+    inline constexpr float eqQMin = 0.5f, eqQMax = 4.0f;
+
+    // The five bands, top to bottom of the panel.
+    struct EqBandSpec
+    {
+        const char* id;
+        const char* name;
+        float minHz, maxHz, defaultHz;
+        bool hasQ;              // HMF, MF: a Q knob; the others switch shelf / bell
+        bool shelfByDefault;
+    };
+    inline constexpr EqBandSpec eqBands[] {
+        { "hf",  "HF",  2000.0f, 20000.0f, 10000.0f, false, true },
+        { "hmf", "HMF", 400.0f,  5000.0f,  2500.0f,  true,  false },
+        { "mf",  "MF",  150.0f,  2500.0f,  600.0f,   true,  false },
+        { "lmf", "LMF", 40.0f,   600.0f,   250.0f,   false, false },
+        { "lf",  "LF",  20.0f,   200.0f,   60.0f,    false, true },
+    };
 }
 
 namespace Parameters
@@ -35,4 +74,7 @@ namespace Parameters
     // and back: straight lines between the printed marks.
     float faderProportion (float db);
     float faderDb (float proportion);
+
+    // "120 Hz", "2.40 kHz".
+    juce::String frequencyText (float hz);
 }

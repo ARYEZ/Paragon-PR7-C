@@ -243,15 +243,12 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
         }
         else
         {
-            // As on the concept, the Q knob's scale runs round its top
-            // (0.5 at the left to 4 at the right), with "Q" at the bottom
-            // right: there's no room under it.
-            const auto qY = plate.getBottom() - 32.0f;
-            auto& q = addKnob (id + ".q", P (800, qY), 18, {}, {}, {}, 0.5, later (name + " Q: the width of the bell", eqStep));
-            q.setScale ({ { 1.0f / 6.0f, "0.5" }, { 0.5f, "1" }, { 2.0f / 3.0f, "2" }, { 5.0f / 6.0f, "4" } });
-            q.addLabel (1.0f, "Q");
-            addButton (id + ".shape", {}, R (850, juce::roundToInt (qY - 13.0f), 52, 25), true, later (name + ": shelf or bell curve", eqStep))
-                .getProperties().set (ParagonLookAndFeel::iconProperty, "shape");
+            // As on the concept, the Q knob's scale runs round its top: it
+            // turns from 9 o'clock (0.5) to 3 o'clock (4), with "Q" at the
+            // bottom right. There's no room under it.
+            auto& q = addKnob (id + ".q", P (800, plate.getBottom() - 32.0f), 18, {}, {}, {}, 0.5, {});
+            q.setTravel (juce::MathConstants<float>::pi * 1.5f, juce::MathConstants<float>::pi * 2.5f);
+            q.addLabel (1.25f, "Q");
         }
     }
 
@@ -347,6 +344,45 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
     addAndMakeVisible (fader);
     controls["output.fader"] = &fader;
 
+    // HPF / LPF and the EQ (step 2).
+    attachButton ("hpf.on", ParamIDs::hpfOn, "HPF on/off: cuts lows below its frequency (12 dB an octave)");
+    attachButton ("lpf.on", ParamIDs::lpfOn, "LPF on/off: cuts highs above its frequency (12 dB an octave)");
+    attachKnob ("hpf.freq", ParamIDs::hpfFreq, { { 20.0f, "20" }, { 50.0f, "50" }, { 100.0f, "100" }, { 200.0f, "200" }, { 500.0f, "500" }, { 2000.0f, "2k" } },
+                "HPF frequency: rumble and lows below it are cut");
+    attachKnob ("lpf.freq", ParamIDs::lpfFreq, { { 1000.0f, "1k" }, { 2000.0f, "2k" }, { 5000.0f, "5k" }, { 10000.0f, "10k" }, { 20000.0f, "20k" } },
+                "LPF frequency: fizz and highs above it are cut");
+    attachSwitch ("filters.placement", ParamIDs::filterPlacement,
+                  "Where the HPF / LPF sit. IN: at the input, before everything. POST: after the compressor and EQ, before the limiter. "
+                  "SC: only in what the gate and compressor listen to, so they react less to lows or highs; the audio itself isn't filtered.");
+
+    const std::map<juce::String, std::vector<std::pair<float, juce::String>>> frequencyMarks {
+        { "hf",  { { 2000.0f, "2k" }, { 3000.0f, "3k" }, { 5000.0f, "5k" }, { 8000.0f, "8k" }, { 12000.0f, "12k" }, { 20000.0f, "20k" } } },
+        { "hmf", { { 400.0f, "400" }, { 800.0f, "800" }, { 1500.0f, "1.5k" }, { 3000.0f, "3k" }, { 5000.0f, "5k" } } },
+        { "mf",  { { 150.0f, "150" }, { 300.0f, "300" }, { 600.0f, "600" }, { 1200.0f, "1.2k" }, { 2500.0f, "2.5k" } } },
+        { "lmf", { { 40.0f, "40" }, { 80.0f, "80" }, { 150.0f, "150" }, { 300.0f, "300" }, { 600.0f, "600" } } },
+        { "lf",  { { 20.0f, "20" }, { 30.0f, "30" }, { 50.0f, "50" }, { 80.0f, "80" }, { 120.0f, "120" }, { 200.0f, "200" } } },
+    };
+    for (const auto& band : ParamRanges::eqBands)
+    {
+        const juce::String id (band.id), name (band.name);
+        attachButton (id + ".on", ParamIDs::eqOn (id), name + " band on/off");
+        attachKnob (id + ".freq", ParamIDs::eqFreq (id), frequencyMarks.at (id), name + " frequency");
+        attachKnob (id + ".gain", ParamIDs::eqGain (id), { { -15.0f, "-15" }, { 0.0f, "0" }, { 15.0f, "+15" } },
+                    name + " gain, -15 to +15 dB. Bells narrow as you boost or cut harder, like a console EQ's.");
+        if (band.hasQ)
+        {
+            attachKnob (id + ".q", ParamIDs::eqQ (id), { { 0.5f, "0.5" }, { 1.0f, "1" }, { 2.0f, "2" }, { 4.0f, "4" } },
+                        name + " Q: the width of the bell. Low is wide and gentle, high is narrow");
+        }
+        else
+        {
+            const auto shelfTip = name + (juce::String (band.id) == "hf" ? ": SHELF lifts or cuts everything above the frequency; off, it's a bell"
+                                                                         : ": SHELF lifts or cuts everything below the frequency; off, it's a bell");
+            attachButton (id + ".shelf", ParamIDs::eqShelf (id), shelfTip);
+            attachButton (id + ".shape", ParamIDs::eqShelf (id), shelfTip);   // the same switch, showing the curve
+        }
+    }
+
     // The header.
     addButton ("preset.previous", {}, R (522, 24, 32, 32), false, later ("The previous preset", presetStep))
         .getProperties().set (ParagonLookAndFeel::iconProperty, "left");
@@ -383,6 +419,44 @@ void MainView::timerCallback()
 MainView::~MainView()
 {
     Finish::changes().removeChangeListener (this);
+}
+
+void MainView::attachKnob (const juce::String& controlId, const juce::String& parameterId,
+                          std::vector<std::pair<float, juce::String>> marks, const juce::String& tooltip)
+{
+    auto* knob = dynamic_cast<Knob*> (findControl (controlId));
+    auto* parameter = processor.getParameters().getParameter (parameterId);
+    jassert (knob != nullptr && parameter != nullptr);
+
+    for (auto& mark : marks)
+        mark.first = parameter->convertTo0to1 (mark.first);
+    knob->setScale (std::move (marks));
+    knobAttachments.push_back (std::make_unique<SliderAttachment> (processor.getParameters(), parameterId, knob->slider));
+    knob->slider.setDoubleClickReturnValue (true, parameter->convertFrom0to1 (parameter->getDefaultValue()));
+    knob->slider.setPopupDisplayEnabled (true, true, this);
+    knob->slider.setTooltip (tooltip);
+}
+
+void MainView::attachButton (const juce::String& controlId, const juce::String& parameterId, const juce::String& tooltip)
+{
+    auto* button = dynamic_cast<juce::Button*> (findControl (controlId));
+    jassert (button != nullptr);
+    button->setClickingTogglesState (true);
+    buttonAttachments.push_back (std::make_unique<ButtonAttachment> (processor.getParameters(), parameterId, *button));
+    if (auto* client = dynamic_cast<juce::SettableTooltipClient*> (button))
+        client->setTooltip (tooltip);
+}
+
+void MainView::attachSwitch (const juce::String& controlId, const juce::String& parameterId, const juce::String& tooltip)
+{
+    auto* lever = dynamic_cast<LeverSwitch*> (findControl (controlId));
+    auto* parameter = processor.getParameters().getParameter (parameterId);
+    jassert (lever != nullptr && parameter != nullptr);
+    auto attachment = std::make_unique<juce::ParameterAttachment> (*parameter, [lever] (float value) { lever->setPosition (juce::roundToInt (value)); });
+    lever->onChange = [lever, raw = attachment.get()] { raw->setValueAsCompleteGesture ((float) lever->getPosition()); };
+    attachment->sendInitialUpdate();
+    switchAttachments.push_back (std::move (attachment));
+    lever->setTooltip (tooltip);
 }
 
 juce::Component* MainView::findControl (const juce::String& id) const

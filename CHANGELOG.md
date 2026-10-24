@@ -10,6 +10,15 @@ Each version's notes appear on its GitHub Release page.
   - GATE: FAST / MED / SLOW set the attack, and the knob beside RELEASE is HOLD.
   - COMP: RATIO has a SOFT position at the bottom, and there's a MAKE UP knob.
   - V GAIN is the console's noise, from OFF up.
+- **The EQ works:** five bands, each ±15 dB.
+  - **HF**, **LMF** and **LF** switch between a shelf and a bell (the SHELF key and the curve key do the same thing).
+  - **HMF** and **MF** are bells with a Q knob.
+  - Like a console EQ, the bells are broad for small boosts and cuts, and get narrower as you push them harder.
+- **The HPF and LPF work** (12 dB an octave; HPF 20 Hz–2 kHz, LPF 1–20 kHz). The IN / POST / SC switch moves them:
+  - **IN:** at the input.
+  - **POST:** after the compressor and EQ.
+  - **SC:** out of the audio, ready for the gate and compressor to listen through once those are built.
+- Everything glides when you move it, so turning, switching and sweeping never click.
 - **Working now:**
   - **INPUT** (the top knob, -24 to +12 dB) sets the level into the strip.
   - **Ø** flips the polarity, and **MUTE** silences the output. Both glide over 20 ms, so they never click.

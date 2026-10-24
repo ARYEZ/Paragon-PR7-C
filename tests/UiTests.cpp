@@ -217,3 +217,40 @@ TEST_CASE ("OVL lights when the signal goes past digital full scale, until it's 
     view.getPeakHoldReset().onClick();
     CHECK (! view.getOverloadLamp().getToggleState());
 }
+
+TEST_CASE ("The HPF / LPF and EQ controls work their parameters", "[ui]")
+{
+    ParagonPR7CAudioProcessor processor;
+    std::unique_ptr<juce::AudioProcessorEditor> editor (processor.createEditor());
+    auto& view = viewOf (*editor);
+    auto& parameters = processor.getParameters();
+
+    auto* gain = dynamic_cast<Knob*> (view.findControl ("hmf.gain"));
+    REQUIRE (gain != nullptr);
+    gain->slider.setValue (6.0, juce::sendNotificationSync);
+    CHECK_THAT (parameters.getRawParameterValue (ParamIDs::eqGain ("hmf"))->load(), WithinAbs (6.0, 0.05));
+
+    // The IN / POST / SC switch, both ways.
+    auto* placement = dynamic_cast<LeverSwitch*> (view.findControl ("filters.placement"));
+    REQUIRE (placement != nullptr);
+    placement->setPosition (2);
+    CHECK (juce::roundToInt (parameters.getRawParameterValue (ParamIDs::filterPlacement)->load()) == 2);
+    setParameter (processor, ParamIDs::filterPlacement, 1.0f);
+    CHECK (placement->getPosition() == 1);
+
+    // SHELF and the curve key are one switch.
+    auto* shelf = dynamic_cast<juce::Button*> (view.findControl ("lf.shelf"));
+    auto* curve = dynamic_cast<juce::Button*> (view.findControl ("lf.shape"));
+    REQUIRE ((shelf != nullptr && curve != nullptr));
+    CHECK ((shelf->getToggleState() && curve->getToggleState()));   // LF starts as a shelf
+    curve->setToggleState (false, juce::sendNotificationSync);
+    CHECK (parameters.getRawParameterValue (ParamIDs::eqShelf ("lf"))->load() < 0.5f);
+    CHECK (! shelf->getToggleState());
+
+    // The HPF starts off; its lamp follows the parameter.
+    auto* hpf = dynamic_cast<juce::Button*> (view.findControl ("hpf.on"));
+    REQUIRE (hpf != nullptr);
+    CHECK (! hpf->getToggleState());
+    setParameter (processor, ParamIDs::hpfOn, 1.0f);
+    CHECK (hpf->getToggleState());
+}
