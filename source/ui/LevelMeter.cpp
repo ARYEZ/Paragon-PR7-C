@@ -74,10 +74,7 @@ void LevelMeter::paint (juce::Graphics& g)
     for (int i = 0; i < count; ++i)
     {
         const auto proportion = ((float) i + 0.5f) / (float) count;
-        const auto db = dbForProportion (proportion);
-        const auto colour = db > -dbfsAtZero ? ParagonColours::meterRed
-                          : db > 0.0f ? juce::Colour (0xffffa62a)
-                                      : juce::Colour (0xfff3ede4);
+        const auto colour = ParagonColours::meterColour (proportion);
         const auto lit = proportion <= litProportion || i == heldSegment;
         const auto segment = juce::Rectangle<float> (bounds.getX(), bounds.getBottom() - (float) (i + 1) * pitch + 0.6f, bounds.getWidth(), pitch - 1.2f);
 

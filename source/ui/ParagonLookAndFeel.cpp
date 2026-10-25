@@ -27,6 +27,20 @@ ParagonLookAndFeel::ParagonLookAndFeel()
     // The value shown while a knob or the fader is turned.
     setColour (juce::BubbleComponent::backgroundColourId, ParagonColours::panel.withAlpha (0.95f));
     setColour (juce::BubbleComponent::outlineColourId, ParagonColours::accent);
+
+    // Menus (the preset list, "...", the settings gear) and dialogs (SAVE):
+    // black, with white lettering, highlighted in the neon red.
+    setColour (juce::PopupMenu::backgroundColourId, juce::Colour (0xff050405));
+    setColour (juce::PopupMenu::textColourId, juce::Colours::white);
+    setColour (juce::PopupMenu::headerTextColourId, juce::Colours::white);
+    setColour (juce::PopupMenu::highlightedBackgroundColourId, juce::Colour (0xffb0222a));
+    setColour (juce::PopupMenu::highlightedTextColourId, juce::Colours::white);
+    setColour (juce::AlertWindow::backgroundColourId, juce::Colour (0xff050405));
+    setColour (juce::AlertWindow::textColourId, juce::Colours::white);
+    setColour (juce::AlertWindow::outlineColourId, ParagonColours::panelEdge);
+    setColour (juce::TextEditor::backgroundColourId, juce::Colour (0xff141214));
+    setColour (juce::TextEditor::outlineColourId, ParagonColours::panelEdge);
+    setColour (juce::TextEditor::focusedOutlineColourId, ParagonColours::accent);
 }
 
 void ParagonLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButton& button, bool highlighted, bool)
@@ -533,9 +547,27 @@ void ParagonLookAndFeel::drawLinearSlider (juce::Graphics& g, int x, int y, int 
         g.setColour (juce::Colours::black);
         g.drawRoundedRectangle (slot, 6.0f, 1.0f);
 
+        const auto cap = juce::Rectangle<float> (42.0f, (float) channelFaderThumbRadius * 2.0f).withCentre ({ centreX, sliderPos });
+        if (Finish::neonKeys())
+        {
+            // With neon keys, the cap matches them: pink to red to orange,
+            // with grip ridges and a pale line at its centre for reading
+            // the level.
+            drawPianoKey (g, cap, 4.0f, 2.5f, false, false, true);
+            g.setColour (juce::Colours::black.withAlpha (0.18f));
+            for (auto ridge = cap.getY() + 6.0f; ridge < cap.getBottom() - 5.0f; ridge += 4.0f)
+                if (std::abs (ridge - sliderPos) > 5.0f)
+                    g.drawHorizontalLine (juce::roundToInt (ridge), cap.getX() + 5.0f, cap.getRight() - 5.0f);
+            const auto line = juce::Rectangle<float> (cap.getWidth() - 10.0f, 2.0f).withCentre ({ centreX, sliderPos });
+            g.setColour (juce::Colour (0xffffe9a8).withAlpha (0.35f));
+            g.fillRect (line.expanded (0.0f, 1.5f));
+            g.setColour (juce::Colour (0xffffe9a8));
+            g.fillRect (line);
+            return;
+        }
+
         // The cap: brushed chrome, concave (darker across its middle), with a
         // red line at its centre for reading the level.
-        const auto cap = juce::Rectangle<float> (42.0f, (float) channelFaderThumbRadius * 2.0f).withCentre ({ centreX, sliderPos });
         juce::Path outline;
         outline.addRoundedRectangle (cap, 4.0f);
         juce::DropShadow (juce::Colours::black.withAlpha (0.6f), 10, { 0, 5 }).drawForPath (g, outline);
