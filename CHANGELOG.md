@@ -2,6 +2,15 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.4.1
+
+**Look fixes from your first test of 0.4.0.** The sound is unchanged.
+
+- **Menus and dialogs** (the preset list, the "…" menu, the settings gear, SAVE) are now black with white lettering, instead of grey-blue.
+- **The meters** now run orange at the bottom to hot pink at the top, like the buttons, instead of white and yellow. The small GR / COMP / LIMIT meters match. Going past digital full scale still lights OVL.
+- **The fader cap** is now the same pink-red-orange as the buttons (on Pearl Black and White + Neon), with a pale line across it to read the level.
+- **Pearl Black is darker**, using the exact black of the PR7-G black unit.
+
 ## 0.4.0
 
 **New: every module works now, and presets.** The saturation, the console colour (THD, V GAIN and the 72 console channels), the stereo tools (mono maker, stereo width, stereo modes) and factory and user presets. Everything new is off by default, so a fresh PR7-C still leaves your audio untouched.
