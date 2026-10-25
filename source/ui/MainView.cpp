@@ -53,10 +53,17 @@ namespace
         plate.addRoundedRectangle (bounds, 8.0f);
         juce::DropShadow (juce::Colours::black.withAlpha (0.8f), 10, { 0, 3 }).drawForPath (g, plate);
 
-        // Pearl black is near black, as on the PR7-G black unit (its face
-        // measures #0d0d0d to #131010), lit only along its top edge.
-        g.setGradientFill (juce::ColourGradient (Finish::pick (0xfff6f3f4, 0xff161314), 0.0f, bounds.getY(),
-                                                 Finish::pick (0xffd6d0d3, 0xff0b0a0b), 0.0f, bounds.getBottom(), false));
+        // Pearl black is near black: the PR7-G black unit's own face
+        // gradient (#1a1819 at the lit top edge down to #070707).
+        juce::ColourGradient pearl (Finish::pick (0xfff6f3f4, 0xff1a1819), 0.0f, bounds.getY(),
+                                    Finish::pick (0xffd6d0d3, 0xff070707), 0.0f, bounds.getBottom(), false);
+        if (black)
+        {
+            pearl.addColour (0.18, juce::Colour (0xff121112));
+            pearl.addColour (0.42, juce::Colour (0xff0a0a0a));
+            pearl.addColour (0.7, juce::Colour (0xff0e0d0e));
+        }
+        g.setGradientFill (pearl);
         g.fillPath (plate);
 
         // The bevel: the top edge catching the light, the bottom in shadow.
@@ -67,7 +74,7 @@ namespace
         g.drawRoundedRectangle (bounds, 8.0f, 1.0f);
 
         const auto inset = bounds.reduced (8.0f).withTrimmedTop (header ? 30.0f : 0.0f);
-        g.setColour (black ? juce::Colours::white.withAlpha (0.025f) : juce::Colours::black.withAlpha (0.03f));
+        g.setColour (juce::Colours::black.withAlpha (black ? 0.15f : 0.03f));   // a shallow recess, never lighter on black
         g.fillRoundedRectangle (inset, 6.0f);
         g.setColour (juce::Colours::white.withAlpha (black ? 0.08f : 0.8f));
         g.drawRoundedRectangle (inset.translated (0.0f, 1.0f), 6.0f, 1.0f);

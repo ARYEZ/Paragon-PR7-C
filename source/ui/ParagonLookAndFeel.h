@@ -13,6 +13,14 @@ namespace ParagonColours
     inline const juce::Colour accentDim  { 0xff5a2a0a };
     inline const juce::Colour meterRed   { 0xffff3b2f };
     inline const juce::Colour text       { 0xffe8e8ea };
+
+    // The meters' LEDs, `t` from 0 (the bottom of the scale) to 1 (the top):
+    // orange rising through red to hot pink, the neon keys' colours at LED
+    // brightness.
+    inline juce::Colour meterColour (float t)
+    {
+        return juce::Colour (0xffff7a1a).interpolatedWith (juce::Colour (0xffff1f5a), juce::jlimit (0.0f, 1.0f, t));
+    }
     inline const juce::Colour textDim    { 0xff8a8a92 };
 
     // The silver pedal unit, and dark "ink" for text printed on it.

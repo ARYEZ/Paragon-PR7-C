@@ -370,7 +370,6 @@ void GainReductionMeter::paint (juce::Graphics& g)
 {
     g.fillAll (meterGlass);
     const auto bounds = getLocalBounds().toFloat();
-    const juce::Colour amber { 0xffffa62a }, white { 0xfff3ede4 };
 
     const auto drawSegment = [&] (juce::Rectangle<float> segment, juce::Colour colour, bool lit)
     {
@@ -385,14 +384,14 @@ void GainReductionMeter::paint (juce::Graphics& g)
 
     if (style == Style::vertical)
     {
-        // From the bottom up: the first few dB white, then amber.
+        // From the bottom up: orange to pink, as the level meters.
         constexpr auto pitch = 4.0f;
         const auto count = (int) (bounds.getHeight() / pitch);
         for (int i = 0; i < count; ++i)
         {
             const auto db = rangeDb * ((float) i + 0.5f) / (float) count;
             const auto segment = juce::Rectangle<float> (bounds.getX() + 1.0f, bounds.getBottom() - (float) (i + 1) * pitch + 1.0f, bounds.getWidth() - 2.0f, pitch - 1.6f);
-            drawSegment (segment, db < 6.0f ? white : amber, db <= displayedDb);
+            drawSegment (segment, ParagonColours::meterColour (db / rangeDb), db <= displayedDb);
         }
         return;
     }
@@ -406,6 +405,6 @@ void GainReductionMeter::paint (juce::Graphics& g)
         const auto x = bounds.getCentreX() + (float) i * pitch;
         const auto db = rangeDb * ((float) (i < 0 ? -i : i + 1) - 0.5f) / (float) half;
         const auto segment = juce::Rectangle<float> (x + 0.8f, bounds.getY() + 1.0f, pitch - 1.8f, bounds.getHeight() - 2.0f);
-        drawSegment (segment, amber, i < 0 ? db <= displayedDb : db <= displayedMakeUp);
+        drawSegment (segment, ParagonColours::meterColour (db / rangeDb), i < 0 ? db <= displayedDb : db <= displayedMakeUp);
     }
 }
