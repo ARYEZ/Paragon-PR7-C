@@ -2,6 +2,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
 #include "Parameters.h"
+#include "Latency.h"
 #include "PluginProcessor.h"
 
 using Catch::Matchers::WithinAbs;
@@ -398,5 +399,5 @@ TEST_CASE ("Compressor: EDGE makes it clamp down on harsh upper mids, and leaves
     auto output = input;
     process (*plain, output);
     for (int i = 0; i < input.getNumSamples(); ++i)
-        REQUIRE (juce::exactlyEqual (input.getSample (0, i), output.getSample (0, i)));
+        REQUIRE (juce::exactlyEqual (delayedInput (input, 0, i), output.getSample (0, i)));
 }

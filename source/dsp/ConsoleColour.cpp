@@ -17,6 +17,9 @@ namespace effects
         oversampling = std::make_unique<juce::dsp::Oversampling<float>> (2, 1, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true, false);
         oversampling->initProcessing ((size_t) maxBlockSize);
         warmUp.setSize (2, maxBlockSize);
+        delayed.setSize (2, maxBlockSize);
+        dryDelay.prepare (latencySamples);
+        recentInput.prepare();
         for (size_t side = 0; side < 2; ++side)
         {
             second[side].reset (sampleRate * 2.0, 0.03);
@@ -32,6 +35,8 @@ namespace effects
     {
         if (oversampling != nullptr)
             oversampling->reset();
+        dryDelay.reset();
+        recentInput.reset();
         dcIn = {};
         dcOut = {};
         fresh = true;
@@ -69,14 +74,34 @@ namespace effects
         }
 
         const auto numChannels = juce::jmin (2, audio.getNumChannels());
+        const auto part = [&] (juce::AudioBuffer<float>& buffer)
+        {
+            return juce::dsp::AudioBlock<float> (buffer).getSubBlock (0, (size_t) numSamples).getSubsetChannelBlock (0, (size_t) numChannels);
+        };
+        auto block = part (audio);
+
+        // The dry sound, delayed as much as the filters delay the wet.
+        auto delayedDry = part (delayed);
+        delayedDry.copyFrom (block);
+        dryDelay.process (delayedDry);
+
+        // Switched on: warm the filters up first, on the last moments of
+        // the audio, as if they'd been running all along.
+        if (on && bypass.isSilent())
+        {
+            oversampling->reset();
+            recentInput.replay (warmUp, numChannels, [this] (juce::dsp::AudioBlock<float> recent)
+            {
+                oversampling->processSamplesUp (recent);
+                oversampling->processSamplesDown (recent);
+            });
+        }
+        recentInput.push (audio, numChannels, numSamples);
+
         if (! on && bypass.isSilent())
         {
-            // Off: keep the filters warm on a copy, so switching on doesn't ring.
-            for (int channel = 0; channel < numChannels; ++channel)
-                warmUp.copyFrom (channel, 0, audio, channel, 0, numSamples);
-            auto copy = juce::dsp::AudioBlock<float> (warmUp).getSubBlock (0, (size_t) numSamples).getSubsetChannelBlock (0, (size_t) numChannels);
-            oversampling->processSamplesUp (copy);
-            oversampling->processSamplesDown (copy);
+            // Off: the audio passes on, delayed.
+            block.copyFrom (delayedDry);
             for (size_t side = 0; side < 2; ++side)
             {
                 second[side].setCurrentAndTargetValue (second[side].getTargetValue());
@@ -85,8 +110,7 @@ namespace effects
         }
         else
         {
-            auto block = juce::dsp::AudioBlock<float> (audio).getSubBlock (0, (size_t) numSamples).getSubsetChannelBlock (0, (size_t) numChannels);
-            bypass.process (block, on, [&] (juce::dsp::AudioBlock<float> wet)
+            bypass.process (block, on, delayedDry, [&] (juce::dsp::AudioBlock<float> wet)
             {
                 auto up = oversampling->processSamplesUp (wet);
                 const auto upSamples = (int) up.getNumSamples();

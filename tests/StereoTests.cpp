@@ -3,6 +3,7 @@
 
 #include "ChannelRegistry.h"
 #include "Parameters.h"
+#include "Latency.h"
 #include "PluginProcessor.h"
 
 using Catch::Matchers::WithinAbs;
@@ -162,7 +163,7 @@ TEST_CASE ("Stereo tools: off, and at 100 percent, leave the audio as it was", "
     process (*processor, output);
     for (int channel = 0; channel < 2; ++channel)
         for (int i = 0; i < input.getNumSamples(); ++i)
-            REQUIRE (juce::exactlyEqual (input.getSample (channel, i), output.getSample (channel, i)));
+            REQUIRE (juce::exactlyEqual (delayedInput (input, channel, i), output.getSample (channel, i)));
 
     processor = makeProcessor();
     set (*processor, ParamIDs::widthOn, 1.0f);
@@ -170,7 +171,7 @@ TEST_CASE ("Stereo tools: off, and at 100 percent, leave the audio as it was", "
     process (*processor, output);
     for (int channel = 0; channel < 2; ++channel)
         for (int i = 0; i < input.getNumSamples(); ++i)
-            REQUIRE_THAT (output.getSample (channel, i), WithinAbs (input.getSample (channel, i), 1.0e-6));
+            REQUIRE_THAT (output.getSample (channel, i), WithinAbs (delayedInput (input, channel, i), 1.0e-6));
 }
 
 TEST_CASE ("Stereo tools: switching on and turning the knobs doesn't click", "[stereo]")
@@ -210,7 +211,7 @@ TEST_CASE ("Stereo tools: a mono track is left alone", "[stereo]")
     const auto input = buffer;
     process (*processor, buffer);
     for (int i = 0; i < 4800; ++i)
-        REQUIRE (juce::exactlyEqual (input.getSample (0, i), buffer.getSample (0, i)));
+        REQUIRE (juce::exactlyEqual (delayedInput (input, 0, i), buffer.getSample (0, i)));
 }
 
 TEST_CASE ("Stereo mode: DIGITAL puts both sides on the left side's channel", "[stereo]")

@@ -39,6 +39,7 @@ ParagonPR7CAudioProcessor::ParagonPR7CAudioProcessor()
                          raw (ParamIDs::stereoMode) };
     limitParameters = { raw (ParamIDs::limitOn), raw (ParamIDs::limitThreshold), raw (ParamIDs::limitMakeUp), raw (ParamIDs::limitMode),
                         raw (ParamIDs::limitMix) };
+    setLatencySamples (latencySamples);
     presets.stateRestored();   // "Default", unmodified
     ChannelRegistry::add (*this);
 }
@@ -94,6 +95,7 @@ void ParagonPR7CAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     scEdge.prepare (sampleRate);
     listen.reset (sampleRate, 0.02);
     listen.setCurrentAndTargetValue (scParameters.listen->load() >= 0.5f ? 1.0f : 0.0f);
+    listenDelay.prepare (latencySamples);
     limiter.prepare (sampleRate, maxBlockSize);
     saturation.prepare (sampleRate, maxBlockSize);
     colour.prepare (sampleRate, maxBlockSize);
@@ -297,7 +299,9 @@ void ParagonPR7CAudioProcessor::processModules (juce::AudioBuffer<float>& buffer
     stereoTools.process (buffer, numSamples, { st.monoOn->load() >= 0.5f, st.monoFrequency->load(),
                                                st.widthOn->load() >= 0.5f, st.width->load() / 100.0f });
 
-    // LISTEN: hear what the gate and compressor hear instead (a 20 ms crossfade).
+    // LISTEN: hear what the gate and compressor hear instead (a 20 ms
+    // crossfade), delayed as much as the audio, so it lines up too.
+    listenDelay.process (juce::dsp::AudioBlock<float> (detector));
     listen.setTargetValue (sc.listen->load() >= 0.5f ? 1.0f : 0.0f);
     if (listen.isSmoothing() || listen.getCurrentValue() > 0.0f)
     {

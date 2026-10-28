@@ -27,10 +27,13 @@ namespace effects
     // The curves run at 4x the sample rate, so the harmonics they make above
     // the audio range are filtered away instead of folding back down as
     // aliasing. The dry signal goes through the same filters, so MIX blends
-    // two signals that line up. While on, that shifts the sound by a few
-    // samples (about 0.1 ms at 48 kHz). While off, the audio is untouched,
-    // but those filters keep running on a copy of it, so switching on
-    // doesn't start them cold (which rings: a small click).
+    // two signals that line up. Those filters delay the sound by about 4.4
+    // samples, nearly the same at every frequency, so while off it's delayed
+    // by 4 whole samples (`latencySamples`) instead: on or off, the plugin's
+    // delay stays the same, and the host, told it, lines the tracks up.
+    // While off, the filters rest; switched on, they're first warmed up on
+    // the last moments of the audio (`RecentInput`), so they don't start
+    // cold (which rings: a small click).
     class Saturation
     {
     public:
@@ -55,6 +58,9 @@ namespace effects
 
         static constexpr int oversamplingStages = 2;   // 4x
         static constexpr float headroom = 2.0f;        // the saturation point at DRIVE 0: +6 dBFS
+        // The 4x filters' delay (4.43 samples at any sample rate), rounded.
+        // A test checks it against the filters.
+        static constexpr int latencySamples = 4;
 
     private:
         double sampleRate = 48000.0;
@@ -64,6 +70,9 @@ namespace effects
         juce::SmoothedValue<float> drive { 1.0f }, harmonics { 0.3f }, clip { 0.0f }, mix { 1.0f };
         std::array<float, 2> dcIn {}, dcOut {};   // a gentle DC blocker: the valve curve's lopsidedness leaves a DC offset
         float dcCoefficient = 0.9995f;
-        juce::AudioBuffer<float> warmUp;   // the copy the filters keep running on while off
+        RecentInput recentInput;           // to warm the filters up with when it's switched on
+        juce::AudioBuffer<float> warmUp;   // where they're warmed up
+        FixedDelay dryDelay;               // the input, delayed as much as the filters delay it
+        juce::AudioBuffer<float> delayed;
     };
 }

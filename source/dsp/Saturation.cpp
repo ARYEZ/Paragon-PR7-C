@@ -23,9 +23,14 @@ namespace effects
 
     float Saturation::vcaClip (float u) noexcept
     {
-        // Nearly flat-topped above 0.8, with a short rounded knee.
-        constexpr auto ceiling = 0.8f, hardness = 8.0f;
-        return u / std::pow (1.0f + std::pow (std::abs (u) / ceiling, hardness), 1.0f / hardness);
+        // Nearly flat-topped above 0.8, with a short rounded knee:
+        // u / (1 + (|u| / 0.8)^8)^(1/8), the powers as squares and square
+        // roots (much quicker than pow).
+        constexpr auto ceiling = 0.8f;
+        const auto r = u / ceiling;
+        const auto r2 = r * r;
+        const auto r4 = r2 * r2;
+        return u / std::sqrt (std::sqrt (std::sqrt (1.0f + r4 * r4)));
     }
 
     void Saturation::prepare (double newSampleRate, int maxBlockSize)
@@ -36,6 +41,9 @@ namespace effects
                                                                           juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true, false);
         oversampling->initProcessing ((size_t) maxBlockSize);
         warmUp.setSize (2, maxBlockSize);
+        delayed.setSize (2, maxBlockSize);
+        dryDelay.prepare (latencySamples);
+        recentInput.prepare();
         const auto oversampledRate = sampleRate * (double) (1 << oversamplingStages);
         for (auto* smoothed : { &drive, &harmonics, &clip, &mix })
             smoothed->reset (oversampledRate, 0.03);
@@ -47,6 +55,8 @@ namespace effects
     {
         if (oversampling != nullptr)
             oversampling->reset();
+        dryDelay.reset();
+        recentInput.reset();
         dcIn = {};
         dcOut = {};
         fresh = true;
@@ -73,20 +83,38 @@ namespace effects
         mix.setTargetValue (mixTarget);
 
         const auto numChannels = juce::jmin (2, audio.getNumChannels());
+        const auto part = [&] (juce::AudioBuffer<float>& buffer)
+        {
+            return juce::dsp::AudioBlock<float> (buffer).getSubBlock (0, (size_t) numSamples).getSubsetChannelBlock (0, (size_t) numChannels);
+        };
+        auto block = part (audio);
+
+        // The dry sound, delayed as much as the filters delay the wet.
+        auto delayedDry = part (delayed);
+        delayedDry.copyFrom (block);
+        dryDelay.process (delayedDry);
+
+        // Switched on: warm the filters up first, on the last moments of
+        // the audio, as if they'd been running all along.
+        if (settings.on && bypass.isSilent())
+        {
+            oversampling->reset();
+            recentInput.replay (warmUp, numChannels, [this] (juce::dsp::AudioBlock<float> recent)
+            {
+                oversampling->processSamplesUp (recent);
+                oversampling->processSamplesDown (recent);
+            });
+        }
+        recentInput.push (audio, numChannels, numSamples);
+
         if (! settings.on && bypass.isSilent())
         {
-            // Off: keep the filters running on a copy, so they're warm when
-            // it's switched on.
-            for (int channel = 0; channel < numChannels; ++channel)
-                warmUp.copyFrom (channel, 0, audio, channel, 0, numSamples);
-            auto copy = juce::dsp::AudioBlock<float> (warmUp).getSubBlock (0, (size_t) numSamples).getSubsetChannelBlock (0, (size_t) numChannels);
-            oversampling->processSamplesUp (copy);
-            oversampling->processSamplesDown (copy);
+            // Off: the audio passes on, delayed.
+            block.copyFrom (delayedDry);
             return;
         }
 
-        auto block = juce::dsp::AudioBlock<float> (audio).getSubBlock (0, (size_t) numSamples).getSubsetChannelBlock (0, (size_t) numChannels);
-        bypass.process (block, settings.on, [&] (juce::dsp::AudioBlock<float> wet)
+        bypass.process (block, settings.on, delayedDry, [&] (juce::dsp::AudioBlock<float> wet)
         {
             auto up = oversampling->processSamplesUp (wet);
             const auto upSamples = (int) up.getNumSamples();
@@ -100,8 +128,15 @@ namespace effects
                 {
                     const auto dry = up.getSample ((int) channel, i);
                     auto u = dry * g / headroom;
-                    u += (vcaClip (u) - u) * c;
-                    const auto shaped = evenCurve (u) * (1.0f - h) + oddCurve (u) * h;
+                    // Only what's in use: the clip while it's on, and the
+                    // curve or curves HARMONICS blends.
+                    if (c > 0.0f)
+                        u += (vcaClip (u) - u) * c;
+                    auto shaped = 0.0f;
+                    if (h < 1.0f)
+                        shaped += evenCurve (u) * (1.0f - h);
+                    if (h > 0.0f)
+                        shaped += oddCurve (u) * h;
                     const auto saturated = shaped * headroom / g;   // the same level as the dry for quiet sounds
                     up.setSample ((int) channel, i, dry + (saturated - dry) * m);
                 }
