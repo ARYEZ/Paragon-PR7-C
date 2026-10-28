@@ -20,7 +20,18 @@ namespace effects
     //         like an optical cell: smooth.
     //   FET   a peak detector (it catches every transient), a firm knee,
     //         and a touch of third-harmonic grit that grows with the gain
-    //         reduction: fast and aggressive. The grit is worked out at
+    //         reduction: fast and aggressive.
+    //   MODERN inspired by a well-known modern studio compressor (from its
+    //         published manual's descriptions; our design, not a model of
+    //         it): a peak detector, knees that change along the RATIO knob
+    //         (very long and gentle at 2:1 to 3:1, steeper at 4:1 to 6:1, an
+    //         optical-style stretching release around 10:1, near-brick-wall
+    //         at 20:1 and up), attack twice as fast, a release that lets go
+    //         quicker after deep compression, and its own distortion
+    //         (`Distortion`): mostly 2nd harmonic, or 2nd and 3rd (tape-like),
+    //         growing as it compresses.
+    //
+    // FET's grit and MODERN's distortion are worked out at
     //         twice the sample rate, so its harmonics never fold back down
     //         as aliasing, and added to the compressed sound. Only the grit
     //         goes through those filters (a few samples late, which can't
@@ -37,7 +48,8 @@ namespace effects
     class Compressor
     {
     public:
-        enum class Character { vca, opto, fet };   // saved by index: only append
+        enum class Character { vca, opto, fet, modern };   // saved by index: only append
+        enum class Distortion { clean, second, secondAndThird };   // MODERN only; saved by index: only append
 
         struct Settings
         {
@@ -49,6 +61,7 @@ namespace effects
             float makeUpDb = 0.0f;
             Character character = Character::vca;
             bool link = true;
+            Distortion distortion = Distortion::clean;
         };
 
         static constexpr float softRatio = 1.0f, infiniteRatio = 30.0f;
@@ -66,21 +79,31 @@ namespace effects
 
         // The static curve: the gain change (dB, 0 or less) for a steady level.
         static float gainComputerDb (float levelDb, float thresholdDb, float ratio, float kneeDb) noexcept;
-        static float kneeDbFor (Character) noexcept;
+        static float kneeDbFor (Character, float ratio = 4.0f) noexcept;
 
     private:
+        // MODERN's distortion: how much 2nd and 3rd to fade towards (0 to 1).
+        static float evenFor (const Settings&) noexcept;
+        static float oddFor (const Settings&) noexcept;
+
         double sampleRate = 48000.0;
         bool fresh = true;   // the first block after prepare: on or off at once, no fade
         BypassFade bypass;
         juce::SmoothedValue<float> makeUp { 1.0f }, fetGrit { 0.0f };   // the grit fades in and out with FET
+        juce::SmoothedValue<float> modernEven { 0.0f }, modernOdd { 0.0f };   // MODERN's distortion, faded in and out the same way
         std::array<float, 2> meanSquare {}, peak {}, reduction {}, memory {};
         std::array<std::atomic<float>, 2> reductionDb {};
 
-        // FET grit at twice the rate: per sample, its amount and the level
-        // the waveform is measured against, and the sound it works on.
+        // FET's grit and MODERN's distortion at twice the rate: per sample,
+        // the odd (3rd) and even (2nd) amounts and the level the waveform is
+        // measured against, and the sound they work on. Only what they add
+        // goes through these filters, and a 5 Hz blocker takes out the DC
+        // the even part leaves.
         void addGrit (juce::dsp::AudioBlock<float>, int numSamples) noexcept;
         std::unique_ptr<juce::dsp::Oversampling<float>> gritOversampling;
-        juce::AudioBuffer<float> gritAmount, gritLevel, gritSignal;
+        juce::AudioBuffer<float> gritOdd, gritEven, gritLevel, gritSignal;
         bool gritRunning = false;
+        std::array<float, 2> gritDcIn {}, gritDcOut {};
+        float dcCoefficient = 0.9995f;
     };
 }

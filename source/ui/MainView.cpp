@@ -1,5 +1,6 @@
 #include "MainView.h"
 
+#include "FactoryPresets.h"
 #include "ui/Finish.h"
 #include "ui/LedDisplay.h"
 #include "ui/Logo.h"
@@ -172,9 +173,11 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
     addLed ("sc.on", { 58, 777 }, "Sidechain filter on/off");
     addKnob ("sc.hpf", P (104, 847), 33, { "20", "60", "200" }, {}, "HPF", 0.0, "Sidechain high-pass: the gate and compressor ignore lows below it");
     addKnob ("sc.lpf", P (248, 847), 33, { "1k", "4.5k", "20k" }, {}, "LPF", 1.0, "Sidechain low-pass: the gate and compressor ignore highs above it");
-    addButton ("sc.listen", {}, R (87, 923, 32, 38), true, "LISTEN: hear the sidechain signal")
+    addButton ("sc.listen", {}, R (44, 923, 32, 38), true, "LISTEN: hear the sidechain signal")
         .getProperties().set (ParagonLookAndFeel::ledProperty, true);
-    addButton ("sc.highQ", {}, R (196, 923, 32, 38), true, "HIGH Q: resonant sidechain filters")
+    addButton ("sc.highQ", {}, R (136, 923, 32, 38), true, "HIGH Q: resonant sidechain filters")
+        .getProperties().set (ParagonLookAndFeel::ledProperty, true);
+    addButton ("sc.edge", {}, R (228, 923, 32, 38), true, "EDGE: the detector listens harder to the harsh upper mids")
         .getProperties().set (ParagonLookAndFeel::ledProperty, true);
 
     // COMP.
@@ -183,14 +186,19 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
     auto& ratio = addKnob ("comp.ratio", P (556, 185), 37, {}, {}, "RATIO", 0.4,
                            "Compressor ratio. At SOFT, the ratio rises gently with the level: light on quiet parts, firmer on peaks");
     ratio.setScale ({ { 0.0f, "SOFT" }, { 0.2f, "1.5" }, { 0.4f, "2" }, { 0.6f, "4" }, { 0.8f, "10" }, { 1.0f, juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x9e")) } });
-    addButton ("comp.vca", "VCA", R (368, 268, 78, 30), true, "VCA: clean and precise. Follows the loudness, with a near-hard knee");
-    addButton ("comp.opto", "OPTO", R (448, 268, 78, 30), true, "OPTO: smooth. A wide soft knee, a gentler attack, and a release that stretches the longer it works");
-    addButton ("comp.fet", "FET", R (528, 268, 78, 30), true, "FET: fast and aggressive. Catches every transient, and adds a little grit the harder it works");
-    addRadioGroup ({ "comp.vca", "comp.opto", "comp.fet" }, 2, "comp.vca");
-    addKnob ("comp.attack", P (395, 372), 26, { "0.1", "1", "30" }, {}, "ATTACK", 0.5, "Compressor attack (ms)");
-    addKnob ("comp.release", P (485, 372), 26, { "0.1", "1", "3" }, {}, "RELEASE", 0.5, "Compressor release (s)");
-    addLed ("comp.auto", { 474, 326 }, "AUTO: programme-dependent release").setToggleState (false, juce::dontSendNotification);
-    addKnob ("comp.makeup", P (575, 372), 26, { "0", "10", "20" }, {}, "MAKE UP", 0.0, "Make-up gain (dB): brings the level back up after compressing");
+    addButton ("comp.vca", "VCA", R (351, 268, 64, 30), true, "VCA: clean and precise. Follows the loudness, with a near-hard knee");
+    addButton ("comp.opto", "OPTO", R (417, 268, 64, 30), true, "OPTO: smooth. A wide soft knee, a gentler attack, and a release that stretches the longer it works");
+    addButton ("comp.fet", "FET", R (483, 268, 64, 30), true, "FET: fast and aggressive. Catches every transient, and adds a little grit the harder it works");
+    addButton ("comp.modern", "MODERN", R (549, 268, 72, 30), true,
+               "MODERN: the versatile modern studio compressor. Long gentle knees at low ratios, a smooth optical feel round 10:1, "
+               "near-brick-wall at the top, very fast attack, and its own distortion (the lever below)");
+    addRadioGroup ({ "comp.vca", "comp.opto", "comp.fet", "comp.modern" }, 2, "comp.vca");
+    addSwitch ("comp.distortion", R (430, 307, 20, 48), 3, 0, false,
+               "MODERN's distortion: CLEAN, 2ND (warm, tube-like) or 2+3 (2nd and 3rd, tape-like). It grows as it compresses.");
+    addKnob ("comp.attack", P (395, 384), 26, { "0.1", "1", "30" }, {}, "ATTACK", 0.5, "Compressor attack (ms)");
+    addKnob ("comp.release", P (485, 384), 26, { "0.1", "1", "3" }, {}, "RELEASE", 0.5, "Compressor release (s)");
+    addLed ("comp.auto", { 551, 322 }, "AUTO: programme-dependent release").setToggleState (false, juce::dontSendNotification);
+    addKnob ("comp.makeup", P (575, 384), 26, { "0", "10", "20" }, {}, "MAKE UP", 0.0, "Make-up gain (dB): brings the level back up after compressing");
 
     // LIMIT.
     addLed ("limit.on", { 375, 538 }, "Limiter on/off");
@@ -393,7 +401,10 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
                 { { 1.0f, "SOFT" }, { 1.5f, "1.5" }, { 2.0f, "2" }, { 4.0f, "4" }, { 10.0f, "10" }, { 30.0f, infinity } },
                 "Ratio: how hard it turns down what's over the threshold. SOFT rises with level: gentle on quiet "
                 "parts (about 3:1), firmer on peaks (6:1 and more). At the top it's a limiter.");
-    attachChoice ({ "comp.vca", "comp.opto", "comp.fet" }, ParamIDs::compCharacter);
+    attachChoice ({ "comp.vca", "comp.opto", "comp.fet", "comp.modern" }, ParamIDs::compCharacter);
+    attachSwitch ("comp.distortion", ParamIDs::compDistortion,
+                  "MODERN's distortion (MODERN only). CLEAN: none. 2ND: warm, mostly 2nd harmonic, like a tube. "
+                  "2+3: 2nd and 3rd, rounding the peaks like tape. A little at all times, more the harder it compresses.");
     attachKnob ("comp.attack", ParamIDs::compAttack, { { 0.1f, "0.1" }, { 1.0f, "1" }, { 30.0f, "30" } },
                 "Attack (ms): how quickly it clamps down. Slower lets the start of each note punch through.");
     attachKnob ("comp.release", ParamIDs::compRelease, { { 100.0f, "0.1" }, { 1000.0f, "1" }, { 3000.0f, "3" } },
@@ -431,6 +442,9 @@ MainView::MainView (ParagonPR7CAudioProcessor& processorToShow)
                 "Sidechain LPF: the gate and compressor ignore highs above it (so cymbals don't set them off)");
     attachButton ("sc.listen", ParamIDs::scListen, "LISTEN: hear what the gate and compressor hear, to set the filters. Turn it off to hear the music again.");
     attachButton ("sc.highQ", ParamIDs::scHighQ, "HIGH Q: resonant sidechain filters, focusing the gate and compressor on the frequencies at the cutoffs");
+    attachButton ("sc.edge", ParamIDs::scEdge,
+                  "EDGE: the gate and compressor listen harder to the harsh upper mids (around 6 kHz), so they clamp down on a piercing vocal or an edgy guitar. "
+                  "The audio isn't filtered. Works while SC FILTER is on.");
 
     // SATURATION (step 6).
     attachButton ("sat.on", ParamIDs::satOn, "Saturation on/off");
@@ -698,7 +712,11 @@ juce::String MainView::presetDisplayText() const
     const auto name = presets.getCurrentName();
     if (name.isEmpty())
         return "Untitled";
-    return presets.isModified() ? name + " *" : name;   // * : changed since it was loaded
+    // A factory preset shows its slot too ("A01  Kick Punch").
+    auto slot = presets.getCurrentSlot();
+    if (slot.isNotEmpty())
+        slot += "  ";
+    return slot + (presets.isModified() ? name + " *" : name);   // * : changed since it was loaded
 }
 
 void MainView::mouseDown (const juce::MouseEvent& event)
@@ -710,23 +728,76 @@ void MainView::mouseDown (const juce::MouseEvent& event)
 
 void MainView::showPresetList()
 {
+    // Filed as PR7-X files its rigs: Default, then a submenu per bank (A
+    // drums to G mastering: its own presets, then its parts of the genre and
+    // signature sets), then the sets themselves (each with its six parts),
+    // then yours. Submenus keep it shorter than the screen.
     auto& presets = processor.getPresets();
     const auto list = presets.getPresets();
     const auto* current = presets.findCurrent (list);
+    const auto itemFor = [&] (juce::PopupMenu& menu, size_t i, bool withSlot)
+    {
+        const auto& preset = list[i];
+        menu.addItem ((int) i + 1, withSlot && preset.slot.isNotEmpty() ? preset.slot + "   " + preset.name : preset.name, true, &preset == current);
+        return &preset == current;
+    };
+
     juce::PopupMenu menu;
     bool userHeader = false;
-    menu.addSectionHeader ("Factory");
+    for (size_t i = 0; i < list.size(); ++i)
+        if (list[i].factory && list[i].bank < 0)
+            itemFor (menu, i, false);
+
+    menu.addSectionHeader ("Banks");
+    for (int bank = 0; bank < FactoryBanks::names.size(); ++bank)
+    {
+        juce::PopupMenu bankMenu;
+        bool ticked = false, setsHeader = false;
+        for (size_t i = 0; i < list.size(); ++i)
+        {
+            if (! list[i].factory || list[i].bank != bank)
+                continue;
+            if (list[i].set.isNotEmpty() && ! setsHeader)
+            {
+                bankMenu.addSectionHeader ("Genres and signature sounds");
+                setsHeader = true;
+            }
+            ticked = itemFor (bankMenu, i, true) || ticked;
+        }
+        menu.addSubMenu (FactoryBanks::letter (bank) + "   " + FactoryBanks::names[bank], bankMenu, true, juce::Image(), ticked);
+    }
+
+    for (const auto& [group, names] : { std::pair (juce::String ("Genres"), FactoryBanks::genres),
+                                        { juce::String ("Signature Sounds"), FactoryBanks::signatureSounds } })
+    {
+        menu.addSectionHeader (group);
+        for (const auto& setName : names)
+        {
+            juce::PopupMenu setMenu;
+            bool ticked = false;
+            for (size_t i = 0; i < list.size(); ++i)
+                if (list[i].set == group + "/" + setName)
+                    ticked = itemFor (setMenu, i, true) || ticked;
+            menu.addSubMenu (setName, setMenu, true, juce::Image(), ticked);
+        }
+    }
+
     for (size_t i = 0; i < list.size(); ++i)
     {
-        if (! list[i].factory && ! userHeader)
+        if (list[i].factory)
+            continue;
+        if (! userHeader)
         {
             menu.addSectionHeader ("Yours");
             userHeader = true;
         }
-        menu.addItem ((int) i + 1, list[i].name, true, &list[i] == current);
+        itemFor (menu, i, false);
     }
     if (! userHeader)
+    {
+        menu.addSectionHeader ("Yours");
         menu.addItem (-1, "(Your presets appear here once you SAVE one)", false);
+    }
     menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (findControl ("preset.next")).withTargetScreenArea (
                             localAreaToGlobal (presetDisplay.toNearestInt())),
                         [this, list] (int chosen)
@@ -922,15 +993,19 @@ void MainView::paint (juce::Graphics& g)
     drawStamped (g, "POST", { 192.0f, 256.0f, 50.0f, 14.0f }, 12.0f, juce::Justification::centredLeft);
     drawStamped (g, "SC", { 192.0f, 274.0f, 50.0f, 14.0f }, 12.0f, juce::Justification::centredLeft);
     drawStamped (g, "LINEAR", { 180.0f, 676.0f, 66.0f, 14.0f }, 12.0f, juce::Justification::centredRight);
-    drawStamped (g, "LISTEN", { 127.0f, 935.0f, 70.0f, 16.0f }, 13.5f, juce::Justification::centredLeft);
-    drawStamped (g, "HIGH Q", { 236.0f, 935.0f, 70.0f, 16.0f }, 13.5f, juce::Justification::centredLeft);
-    drawStamped (g, "AUTO", { 489.0f, 319.0f, 40.0f, 14.0f }, 11.0f, juce::Justification::centredLeft);
+    drawStamped (g, "LISTEN", { 82.0f, 935.0f, 56.0f, 16.0f }, 12.5f, juce::Justification::centredLeft);
+    drawStamped (g, "HIGH Q", { 174.0f, 935.0f, 56.0f, 16.0f }, 12.5f, juce::Justification::centredLeft);
+    drawStamped (g, "EDGE", { 266.0f, 935.0f, 50.0f, 16.0f }, 12.5f, juce::Justification::centredLeft);
+    drawStamped (g, "AUTO", { 566.0f, 315.0f, 40.0f, 14.0f }, 11.0f, juce::Justification::centredLeft);
+    drawStamped (g, "CLEAN", { 455.0f, 308.0f, 50.0f, 13.0f }, 10.5f, juce::Justification::centredLeft);
+    drawStamped (g, "2ND", { 455.0f, 324.0f, 50.0f, 13.0f }, 10.5f, juce::Justification::centredLeft);
+    drawStamped (g, "2+3", { 455.0f, 340.0f, 50.0f, 13.0f }, 10.5f, juce::Justification::centredLeft);
     drawStamped (g, "LEFT", { 965.0f, 318.0f, 77.0f, 16.0f }, 13.0f);
     drawStamped (g, "RIGHT", { 1129.0f, 318.0f, 77.0f, 16.0f }, 13.0f);
     drawStamped (g, "RANDOM CH.", { 1235.0f, 500.0f, 190.0f, 16.0f }, 12.5f);
 
     // The keys' trays.
-    drawTray (g, { 364.0f, 265.0f, 245.0f, 36.0f });
+    drawTray (g, { 347.0f, 265.0f, 278.0f, 36.0f });
     drawTray (g, { 361.0f, 687.0f, 248.0f, 38.0f });
 
     // COMP's gain-change meter: a dark window with its scale.

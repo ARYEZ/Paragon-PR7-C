@@ -1,8 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
+#include <set>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
 #include "Parameters.h"
 #include "PluginProcessor.h"
+#include "FactoryPresets.h"
 #include "PresetManager.h"
 
 using Catch::Matchers::WithinAbs;
@@ -80,10 +82,11 @@ TEST_CASE ("Presets: loading sets everything, and leaves the fader, channel, LIS
     set (processor, ParamIDs::satOn, 1.0f);   // not in the kick preset: back to its default (off)
 
     const auto list = presets.getPresets();
-    const auto kick = indexOf (list, "Kick - Punch");
+    const auto kick = indexOf (list, "Kick Punch");
     REQUIRE (kick >= 0);
     presets.load (list[(size_t) kick]);
-    CHECK (presets.getCurrentName() == "Kick - Punch");
+    CHECK (presets.getCurrentName() == "Kick Punch");
+    CHECK (presets.getCurrentSlot() == "A01");
     CHECK (! presets.isModified());
     CHECK_THAT (valueOf (processor, ParamIDs::gateOn), WithinAbs (1.0, 1e-6));
     CHECK_THAT (valueOf (processor, ParamIDs::eqGain ("lf")), WithinAbs (4.0, 0.01));
@@ -202,4 +205,49 @@ TEST_CASE ("Presets: every factory preset plays without blowing up", "[presets]"
             }
         }
     }
+}
+
+TEST_CASE ("Presets: filed as PR7-X files its rigs (banks A to G, genre and signature sets)", "[presets]")
+{
+    const auto& presets = factoryPresets();
+    REQUIRE (presets.front().name == PresetManager::defaultName);
+    CHECK (presets.size() > 150);
+
+    std::set<juce::String> names, slots;
+    for (const auto& preset : presets)
+    {
+        INFO (preset.name.toStdString());
+        CHECK (names.insert (preset.name).second);       // every name once
+        if (preset.bank < 0)
+            continue;
+        CHECK (preset.bank < FactoryBanks::names.size());
+        CHECK (slots.insert (preset.slot()).second);     // every slot once
+        CHECK (preset.tags.size() > 0);
+        if (preset.set.isEmpty())
+            CHECK ((preset.number >= 1 && preset.number <= 10));
+    }
+
+    // Each genre (11 to 19) and signature sound (31 to 38): six parts, at the
+    // same number in every bank but synths and keys.
+    const auto checkSet = [&] (const juce::String& set, int number)
+    {
+        INFO (set.toStdString());
+        std::set<int> banks;
+        for (const auto& preset : presets)
+            if (preset.set == set)
+            {
+                CHECK (preset.number == number);
+                banks.insert (preset.bank);
+            }
+        CHECK (banks == std::set<int> { FactoryBanks::drums, FactoryBanks::bass, FactoryBanks::guitars, FactoryBanks::vocals,
+                                         FactoryBanks::mix, FactoryBanks::master });
+    };
+    for (int i = 0; i < FactoryBanks::genres.size(); ++i)
+        checkSet ("Genres/" + FactoryBanks::genres[i], 11 + i);
+    for (int i = 0; i < FactoryBanks::signatureSounds.size(); ++i)
+        checkSet ("Signature Sounds/" + FactoryBanks::signatureSounds[i], 31 + i);
+
+    // In bank order, so the arrows step A01, A02... G38.
+    for (size_t i = 2; i < presets.size(); ++i)
+        CHECK ((presets[i - 1].bank < presets[i].bank || (presets[i - 1].bank == presets[i].bank && presets[i - 1].number < presets[i].number)));
 }

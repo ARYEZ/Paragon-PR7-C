@@ -9,7 +9,8 @@
 //   PARAGON_SNAPSHOT=editor.png ./ParagonPR7CTests "[snapshot]"
 // PARAGON_SNAPSHOT_WIDTH sets the window width (default: the canvas's 1448;
 // 2896 for a 2x render). PARAGON_SNAPSHOT_FINISH=black or =neon picks the finish;
-// PARAGON_SNAPSHOT_DEMO=1 switches some modules on to show them working.
+// PARAGON_SNAPSHOT_DEMO=1 switches some modules on to show them working;
+// PARAGON_SNAPSHOT_PRESET=name loads a factory preset.
 TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
 {
     const auto path = juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT", "editor.png");
@@ -36,6 +37,12 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
             parameter->setValueNotifyingHost (parameter->convertTo0to1 (value));
         }
     }
+
+    // PARAGON_SNAPSHOT_PRESET=name: a factory preset loaded (its name and slot in the header).
+    if (const auto presetName = juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_PRESET", {}); presetName.isNotEmpty())
+        for (int i = 0; i < PresetManager::getNumFactoryPresets(); ++i)
+            if (PresetManager::getFactoryName (i) == presetName)
+                processor.getPresets().loadFactory (i);
 
     std::unique_ptr<juce::AudioProcessorEditor> editor (processor.createEditor());
     const auto width = juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_WIDTH", juce::String (MainView::width)).getIntValue();

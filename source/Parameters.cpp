@@ -15,6 +15,7 @@ namespace Parameters
         constexpr int satVersion = 7;     // the saturation
         constexpr int toneVersion = 8;    // the console colour (THD, V GAIN, the channels)
         constexpr int stereoVersion = 9;  // MONO MAKER, STEREO WIDTH and the STEREO MODE
+        constexpr int modernVersion = 10; // COMP's MODERN distortion lever and the SC FILTER's EDGE
 
         // RATIO: the marks evenly round the knob, log-even between them. The
         // bottom stretch (below 1.25) is the SOFT position.
@@ -326,6 +327,10 @@ namespace Parameters
         frequencyOf (layout, ParamIDs::scLpf, "SC LPF", scLpfMin, scLpfMax, 20000.0f, gateVersion);
         gateBool (ParamIDs::scListen, "SC Listen", false);
         gateBool (ParamIDs::scHighQ, "SC High Q", false);
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { ParamIDs::scEdge, modernVersion }, "SC Edge", false,
+                                                                juce::AudioParameterBoolAttributes().withStringFromValueFunction (onOff)));
+        layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { ParamIDs::compDistortion, modernVersion }, "Comp Distortion",
+                                                                  compDistortions, 0));
 
         // SATURATION.
         const auto percent = [] (float v, int) { return juce::String (juce::roundToInt (v)) + "%"; };

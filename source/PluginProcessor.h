@@ -129,13 +129,14 @@ private:
     // detectors hear (the audio at the gate's input, through the HPF / LPF
     // when they're set to SC, and the SC FILTER). LISTEN plays it.
     struct GateParameters { std::atomic<float>* on, * threshold, * minus30, * range, * expander, * ratio, * attack, * hold, * release, * linear; };
-    struct ScParameters { std::atomic<float>* on, * hpf, * lpf, * listen, * highQ; };
+    struct ScParameters { std::atomic<float>* on, * hpf, * lpf, * listen, * highQ, * edge; };
     GateParameters gateParameters {};
     ScParameters scParameters {};
     effects::Gate gate;
     effects::CutFilters scFilter;
+    effects::EqBand scEdge { effects::EqBand::Shelf::none };   // EDGE: a boost round 6 kHz in the detector
     juce::SmoothedValue<float> listen { 0.0f };
-    struct CompParameters { std::atomic<float>* on, * threshold, * ratio, * attack, * release, * autoRelease, * makeUp, * character, * link; };
+    struct CompParameters { std::atomic<float>* on, * threshold, * ratio, * attack, * release, * autoRelease, * makeUp, * character, * link, * distortion; };
     CompParameters compParameters {};
     effects::Compressor compressor;
     GainReductionSource compGainChange;

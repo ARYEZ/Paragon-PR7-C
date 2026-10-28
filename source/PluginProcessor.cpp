@@ -26,11 +26,12 @@ ParagonPR7CAudioProcessor::ParagonPR7CAudioProcessor()
     const auto raw = [this] (const char* id) { return parameters.getRawParameterValue (id); };
     compParameters = { raw (ParamIDs::compOn), raw (ParamIDs::compThreshold), raw (ParamIDs::compRatio), raw (ParamIDs::compAttack),
                        raw (ParamIDs::compRelease), raw (ParamIDs::compAuto), raw (ParamIDs::compMakeUp), raw (ParamIDs::compCharacter),
-                       raw (ParamIDs::dynamicsLink) };
+                       raw (ParamIDs::dynamicsLink), raw (ParamIDs::compDistortion) };
     gateParameters = { raw (ParamIDs::gateOn), raw (ParamIDs::gateThreshold), raw (ParamIDs::gateMinus30), raw (ParamIDs::gateRange),
                        raw (ParamIDs::gateExpander), raw (ParamIDs::gateRatio), raw (ParamIDs::gateAttack), raw (ParamIDs::gateHold),
                        raw (ParamIDs::gateRelease), raw (ParamIDs::gateLinear) };
-    scParameters = { raw (ParamIDs::scOn), raw (ParamIDs::scHpf), raw (ParamIDs::scLpf), raw (ParamIDs::scListen), raw (ParamIDs::scHighQ) };
+    scParameters = { raw (ParamIDs::scOn), raw (ParamIDs::scHpf), raw (ParamIDs::scLpf), raw (ParamIDs::scListen), raw (ParamIDs::scHighQ),
+                     raw (ParamIDs::scEdge) };
     satParameters = { raw (ParamIDs::satOn), raw (ParamIDs::satDrive), raw (ParamIDs::satHarmonics), raw (ParamIDs::satVcaClip),
                       raw (ParamIDs::satMix) };
     toneParameters = { raw (ParamIDs::toneOn), raw (ParamIDs::toneThd), raw (ParamIDs::toneVGain), raw (ParamIDs::toneChannel) };
@@ -90,6 +91,7 @@ void ParagonPR7CAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     compressor.prepare (sampleRate, maxBlockSize);
     gate.prepare (sampleRate, maxBlockSize);
     scFilter.prepare (sampleRate);
+    scEdge.prepare (sampleRate);
     listen.reset (sampleRate, 0.02);
     listen.setCurrentAndTargetValue (scParameters.listen->load() >= 0.5f ? 1.0f : 0.0f);
     limiter.prepare (sampleRate, maxBlockSize);
@@ -235,6 +237,9 @@ void ParagonPR7CAudioProcessor::processModules (juce::AudioBuffer<float>& buffer
     const auto scOn = sc.on->load() >= 0.5f;
     scFilter.process (detector, numSamples, { scOn, scOn, sc.hpf->load(), sc.lpf->load(),
                                               sc.highQ->load() >= 0.5f ? ParamRanges::scHighQ : effects::CutFilters::butterworthQ });
+    // EDGE: the detector hears the harsh upper mids 8 dB louder, so the
+    // dynamics clamp down on them (the audio isn't touched).
+    scEdge.process (detector, numSamples, { scOn && sc.edge->load() >= 0.5f, ParamRanges::scEdgeHz, ParamRanges::scEdgeDb, 1.0f, false });
 
     const auto& g = gateParameters;
     gate.process (buffer, detector, numSamples,
@@ -249,8 +254,9 @@ void ParagonPR7CAudioProcessor::processModules (juce::AudioBuffer<float>& buffer
     compressor.process (buffer, detector, numSamples,
                         { c.on->load() >= 0.5f, c.threshold->load(), c.ratio->load(), c.attack->load(), c.release->load(),
                           c.autoRelease->load() >= 0.5f, c.makeUp->load(),
-                          (effects::Compressor::Character) juce::jlimit (0, 2, juce::roundToInt (c.character->load())),
-                          c.link->load() >= 0.5f });
+                          (effects::Compressor::Character) juce::jlimit (0, 3, juce::roundToInt (c.character->load())),
+                          c.link->load() >= 0.5f,
+                          (effects::Compressor::Distortion) juce::jlimit (0, 2, juce::roundToInt (c.distortion->load())) });
     for (int channel = 0; channel < 2; ++channel)
         getGainReduction (Dynamics::comp, channel).push (compressor.getReductionDb (channel));
     compGainChange.push (juce::jmax (compressor.getReductionDb (0), compressor.getReductionDb (1)));
