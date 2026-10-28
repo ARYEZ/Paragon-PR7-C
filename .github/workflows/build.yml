@@ -63,11 +63,28 @@ jobs:
           unzip -q pluginval.zip
           PLUGIN="build/ParagonPR7C_artefacts/Release/VST3/Paragon PR7-C.vst3"
           RUN="${{ matrix.pluginval_bin }} --strictness-level 10 --validate-in-process --validate"
-          if [ "$RUNNER_OS" = "Linux" ]; then
-            xvfb-run -a $RUN "$PLUGIN"
-          else
-            $RUN "$PLUGIN"
+          validate() {
+            if [ "$RUNNER_OS" = "Linux" ]; then
+              xvfb-run -a $RUN "$PLUGIN" 2>&1 | tee pluginval.log
+            else
+              $RUN "$PLUGIN" 2>&1 | tee pluginval.log
+            fi
+            return "${PIPESTATUS[0]}"
+          }
+          status=0
+          validate || status=$?
+          # pluginval (the host, not the plugin) sometimes crashes on Linux
+          # while shutting down, after every test has passed: about 1 run in
+          # 20, with only pluginval's own run loop on the stack, and the
+          # already released 0.4.2 does it too. Run it once more in that case
+          # only: a crash (exit above 128) after SUCCESS. A failed test never
+          # prints SUCCESS, and a second crash still fails the job.
+          if [ "$status" -gt 128 ] && tail -n 5 pluginval.log | grep -q "^SUCCESS"; then
+            echo "::warning::pluginval passed every test, then crashed while shutting down (exit $status). Running it once more."
+            status=0
+            validate || status=$?
           fi
+          exit "$status"
 
       - name: Upload VST3
         uses: actions/upload-artifact@v7
