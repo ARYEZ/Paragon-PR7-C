@@ -269,6 +269,14 @@ TEST_CASE ("Compressor: switching it on, or its character, doesn't click", "[com
     {
         check ([] (auto&) {}, [] (auto& c) { set (c, ParamIDs::compCharacter, 2.0f); });
     }
+    SECTION ("VCA to MODERN, with its distortion")
+    {
+        check ([] (auto& c) { set (c, ParamIDs::compDistortion, 2.0f); }, [] (auto& c) { set (c, ParamIDs::compCharacter, 3.0f); });
+    }
+    SECTION ("MODERN's distortion lever")
+    {
+        check ([] (auto& c) { set (c, ParamIDs::compCharacter, 3.0f); }, [] (auto& c) { set (c, ParamIDs::compDistortion, 2.0f); });
+    }
 }
 
 TEST_CASE ("Compressor: RATIO's marks sit evenly round the knob, SOFT at the bottom", "[comp]")
@@ -291,3 +299,104 @@ TEST_CASE ("Compressor: a block bigger than promised is handled in pieces", "[co
     CHECK (buffer.getMagnitude (0, 2048, 2048) < juce::Decibels::decibelsToGain (-15.0f));
 }
 
+
+TEST_CASE ("Compressor: MODERN's low ratios have a long, gentle knee", "[comp]")
+{
+    // At 2:1, right at the threshold: VCA (a near-hard knee) has barely
+    // started, MODERN (a knee over 20 dB long) is already squeezing gently.
+    // Well over the threshold, both reach the full ratio.
+    const auto atThreshold = [] (float character)
+    {
+        auto comp = makeCompressor (-30.0f, 2.0f);
+        set (*comp, ParamIDs::compCharacter, character);
+        return -settledChangeDb (*comp, -30.0f);
+    };
+    CHECK (atThreshold (0.0f) < 0.4f);
+    CHECK (atThreshold (3.0f) > 0.8f);
+
+    auto modern = makeCompressor (-40.0f, 2.0f);
+    set (*modern, ParamIDs::compCharacter, 3.0f);
+    CHECK_THAT (settledChangeDb (*modern, -10.0f), WithinAbs (-15.0, 1.0));   // 30 dB over at 2:1
+}
+
+TEST_CASE ("Compressor: MODERN at the top of RATIO is a near brick wall", "[comp]")
+{
+    auto comp = makeCompressor (-30.0f, 30.0f);
+    set (*comp, ParamIDs::compCharacter, 3.0f);
+    CHECK_THAT (settledChangeDb (*comp, -10.0f), WithinAbs (-20.0, 1.0));
+}
+
+TEST_CASE ("Compressor: MODERN's distortion lever (clean, 2nd, 2nd and 3rd)", "[comp]")
+{
+    struct Harmonics { float second, third; };
+    const auto measure = [] (float character, float distortion)
+    {
+        auto comp = makeCompressor (-30.0f, 4.0f);
+        set (*comp, ParamIDs::compCharacter, character);
+        set (*comp, ParamIDs::compDistortion, distortion);
+        auto buffer = sine (500.0f, -10.0f, 48000);
+        process (*comp, buffer);
+        const auto fundamental = levelAt (buffer, 500.0f, 24000, 24000);
+        return Harmonics { juce::Decibels::gainToDecibels (levelAt (buffer, 1000.0f, 24000, 24000) / fundamental, -200.0f),
+                           juce::Decibels::gainToDecibels (levelAt (buffer, 1500.0f, 24000, 24000) / fundamental, -200.0f) };
+    };
+    const auto clean = measure (3.0f, 0.0f), second = measure (3.0f, 1.0f), both = measure (3.0f, 2.0f);
+    CHECK (clean.second < -80.0f);
+    CHECK (clean.third < -80.0f);
+    CHECK (second.second > -40.0f);              // 20 dB down: about 3% 2nd
+    CHECK (second.second < -20.0f);              // colour, not fuzz
+    CHECK (second.third < second.second - 20.0f);
+    CHECK (both.third > -45.0f);                 // and 3rd too
+    CHECK (both.second > -45.0f);
+
+    // The lever only works with MODERN: VCA stays clean.
+    const auto vca = measure (0.0f, 2.0f);
+    CHECK (vca.second < -80.0f);
+    CHECK (vca.third < -80.0f);
+}
+
+TEST_CASE ("Compressor: MODERN's distortion leaves no DC and doesn't fold back down", "[comp]")
+{
+    auto comp = makeCompressor (-30.0f, 4.0f);
+    set (*comp, ParamIDs::compCharacter, 3.0f);
+    set (*comp, ParamIDs::compDistortion, 2.0f);
+    auto buffer = sine (9000.0f, -10.0f, 48000);
+    process (*comp, buffer);
+    const auto fundamental = levelAt (buffer, 9000.0f, 24000, 24000);
+    CHECK (juce::Decibels::gainToDecibels (levelAt (buffer, 21000.0f, 24000, 24000) / fundamental) < -70.0f);   // 27 kHz would fold to 21
+    CHECK (juce::Decibels::gainToDecibels (levelAt (buffer, 18000.0f, 24000, 24000) / fundamental) > -50.0f);   // the 2nd, 18 kHz, is real and stays
+    double sum = 0.0;
+    for (int i = 24000; i < 48000; ++i)
+        sum += buffer.getSample (0, i);
+    CHECK (std::abs (sum / 24000.0) < 1.0e-4);
+}
+
+TEST_CASE ("Compressor: EDGE makes it clamp down on harsh upper mids, and leaves the audio alone", "[comp]")
+{
+    // A 6 kHz tone just under the threshold: plain, the compressor leaves it;
+    // with EDGE, the detector hears it 8 dB louder and turns it down.
+    const auto change = [] (bool edge)
+    {
+        auto comp = makeCompressor (-20.0f, 4.0f);
+        set (*comp, ParamIDs::scOn, 1.0f);
+        set (*comp, ParamIDs::scHpf, 20.0f);
+        set (*comp, ParamIDs::scEdge, edge ? 1.0f : 0.0f);
+        const auto input = sine (6000.0f, -22.0f, 48000);
+        auto output = input;
+        process (*comp, output);
+        return juce::Decibels::gainToDecibels (output.getRMSLevel (0, 24000, 24000) / input.getRMSLevel (0, 24000, 24000));
+    };
+    CHECK (change (false) > -0.3f);
+    CHECK (change (true) < -3.0f);
+
+    // With no dynamics on, EDGE changes nothing you hear.
+    auto plain = std::make_unique<ParagonPR7CAudioProcessor>();
+    plain->prepareToPlay (sampleRate, blockSize);
+    set (*plain, ParamIDs::scOn, 1.0f);
+    set (*plain, ParamIDs::scEdge, 1.0f);
+    const auto input = sine (6000.0f, -10.0f, 4800);
+    auto output = input;
+    process (*plain, output);
+    for (int i = 0; i < input.getNumSamples(); ++i)
+        REQUIRE (juce::exactlyEqual (input.getSample (0, i), output.getSample (0, i)));
+}

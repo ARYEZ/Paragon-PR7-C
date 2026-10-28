@@ -2,6 +2,14 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## Unreleased
+
+- **A fourth compressor character: MODERN.** Our own design, inspired by a well-known modern studio compressor:
+  - Very gentle, long knees at low ratios (it eases in as you drive it harder), steeper ones in the middle, a smooth optical feel around 10:1, and near brick-wall limiting at the top.
+  - A faster attack than the others, and a release that lets go quickly out of heavy compression, then slows.
+  - **Its own distortion lever: CLEAN, 2ND or 2+3.** 2ND adds warm, tube-like 2nd harmonic; 2+3 adds 2nd and 3rd, rounding the peaks like tape. A touch at all times, more the harder it compresses.
+- **EDGE** on the SC FILTER: the gate and compressor listen harder to the harsh upper mids (around 6 kHz), so they clamp down on a piercing vocal or an edgy guitar. The audio itself isn't filtered.
+
 ## 0.4.1
 
 **Look fixes from your first test of 0.4.0.** The sound is unchanged.

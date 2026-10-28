@@ -36,7 +36,8 @@ namespace ParamIDs
     inline constexpr auto compRelease = "compRelease";       // ms
     inline constexpr auto compAuto = "compAuto";
     inline constexpr auto compMakeUp = "compMakeUp";         // dB
-    inline constexpr auto compCharacter = "compCharacter";   // choice: VCA, OPTO, FET
+    inline constexpr auto compCharacter = "compCharacter";   // choice: VCA, OPTO, FET, MODERN
+    inline constexpr auto compDistortion = "compDistortion"; // choice: Clean, 2nd, 2nd + 3rd (MODERN only)
 
     // LIMIT.
     inline constexpr auto limitOn = "limitOn";
@@ -63,6 +64,7 @@ namespace ParamIDs
     inline constexpr auto scLpf = "scLpf";
     inline constexpr auto scListen = "scListen";             // hear the sidechain
     inline constexpr auto scHighQ = "scHighQ";
+    inline constexpr auto scEdge = "scEdge";                 // EDGE: the detector listens harder to the harsh upper mids
 
     // SATURATION.
     inline constexpr auto satOn = "satOn";
@@ -120,7 +122,8 @@ namespace ParamRanges
     inline constexpr float compAttackMin = 0.1f, compAttackMax = 30.0f;          // ms
     inline constexpr float compReleaseMin = 50.0f, compReleaseMax = 3000.0f;     // ms
     inline constexpr float compMakeUpMax = 20.0f;
-    inline const juce::StringArray compCharacters { "VCA", "OPTO", "FET" };    // saved by index: only append
+    inline const juce::StringArray compCharacters { "VCA", "OPTO", "FET", "Modern" };    // saved by index: only append
+    inline const juce::StringArray compDistortions { "Clean", "2nd", "2nd + 3rd" };     // saved by index: only append
 
     inline constexpr float limitThresholdMin = -20.0f, limitMakeUpMax = 12.0f;
     inline const juce::StringArray limitModes { "Brick", "Soft", "Auto" };   // saved by index: only append
@@ -132,6 +135,7 @@ namespace ParamRanges
     inline const juce::StringArray gateAttacks { "Fast", "Med", "Slow" };        // saved by index: only append
     inline constexpr float scHpfMin = 20.0f, scHpfMax = 200.0f, scLpfMin = 1000.0f, scLpfMax = 20000.0f;
     inline constexpr float scHighQ = 2.5f;   // the SC FILTER's resonance with HIGH Q
+    inline constexpr float scEdgeHz = 6000.0f, scEdgeDb = 8.0f;   // EDGE: a bell boost in the detector
 
     inline constexpr float satDriveMax = 24.0f;
 
