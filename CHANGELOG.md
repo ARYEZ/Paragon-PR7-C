@@ -2,7 +2,9 @@
 
 Each version's notes appear on its GitHub Release page.
 
-## Unreleased
+## 0.4.3
+
+**New: 162 factory presets.** The sound and the controls are unchanged from 0.4.2.
 
 - **162 factory presets, filed like PR7-X's.** Seven banks: **A** Drums, **B** Bass, **C** Guitars, **D** Synths & Keys, **E** Vocals & Voice, **F** Mix, **G** Mastering.
   - **01 to 10** in each bank: single presets (Kick Punch, Snare Crack, Bass Growl, Clear Lead Vocal, Mix Bus Console Glue, Master Loud...). The 16 old ones are here, renamed and filed.
