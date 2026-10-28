@@ -2,7 +2,9 @@
 
 Each version's notes appear on its GitHub Release page.
 
-## Unreleased
+## 0.4.2
+
+**New: a fourth compressor character, MODERN, and EDGE on the SC FILTER.** Everything else is unchanged from 0.4.1.
 
 - **A fourth compressor character: MODERN.** Our own design, inspired by a well-known modern studio compressor:
   - Very gentle, long knees at low ratios (it eases in as you drive it harder), steeper ones in the middle, a smooth optical feel around 10:1, and near brick-wall limiting at the top.
