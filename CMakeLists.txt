@@ -57,6 +57,7 @@ target_sources(ParagonPR7C
         source/dsp/StereoTools.cpp
         source/ChannelRegistry.cpp
         source/PresetManager.cpp
+        source/FactoryPresets.cpp
         source/ui/MainView.cpp
         source/ui/Controls.cpp
         source/ui/LevelMeter.cpp

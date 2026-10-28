@@ -1,5 +1,6 @@
 #include "MainView.h"
 
+#include "FactoryPresets.h"
 #include "ui/Finish.h"
 #include "ui/LedDisplay.h"
 #include "ui/Logo.h"
@@ -711,7 +712,11 @@ juce::String MainView::presetDisplayText() const
     const auto name = presets.getCurrentName();
     if (name.isEmpty())
         return "Untitled";
-    return presets.isModified() ? name + " *" : name;   // * : changed since it was loaded
+    // A factory preset shows its slot too ("A01  Kick Punch").
+    auto slot = presets.getCurrentSlot();
+    if (slot.isNotEmpty())
+        slot += "  ";
+    return slot + (presets.isModified() ? name + " *" : name);   // * : changed since it was loaded
 }
 
 void MainView::mouseDown (const juce::MouseEvent& event)
@@ -723,23 +728,76 @@ void MainView::mouseDown (const juce::MouseEvent& event)
 
 void MainView::showPresetList()
 {
+    // Filed as PR7-X files its rigs: Default, then a submenu per bank (A
+    // drums to G mastering: its own presets, then its parts of the genre and
+    // signature sets), then the sets themselves (each with its six parts),
+    // then yours. Submenus keep it shorter than the screen.
     auto& presets = processor.getPresets();
     const auto list = presets.getPresets();
     const auto* current = presets.findCurrent (list);
+    const auto itemFor = [&] (juce::PopupMenu& menu, size_t i, bool withSlot)
+    {
+        const auto& preset = list[i];
+        menu.addItem ((int) i + 1, withSlot && preset.slot.isNotEmpty() ? preset.slot + "   " + preset.name : preset.name, true, &preset == current);
+        return &preset == current;
+    };
+
     juce::PopupMenu menu;
     bool userHeader = false;
-    menu.addSectionHeader ("Factory");
+    for (size_t i = 0; i < list.size(); ++i)
+        if (list[i].factory && list[i].bank < 0)
+            itemFor (menu, i, false);
+
+    menu.addSectionHeader ("Banks");
+    for (int bank = 0; bank < FactoryBanks::names.size(); ++bank)
+    {
+        juce::PopupMenu bankMenu;
+        bool ticked = false, setsHeader = false;
+        for (size_t i = 0; i < list.size(); ++i)
+        {
+            if (! list[i].factory || list[i].bank != bank)
+                continue;
+            if (list[i].set.isNotEmpty() && ! setsHeader)
+            {
+                bankMenu.addSectionHeader ("Genres and signature sounds");
+                setsHeader = true;
+            }
+            ticked = itemFor (bankMenu, i, true) || ticked;
+        }
+        menu.addSubMenu (FactoryBanks::letter (bank) + "   " + FactoryBanks::names[bank], bankMenu, true, juce::Image(), ticked);
+    }
+
+    for (const auto& [group, names] : { std::pair (juce::String ("Genres"), FactoryBanks::genres),
+                                        { juce::String ("Signature Sounds"), FactoryBanks::signatureSounds } })
+    {
+        menu.addSectionHeader (group);
+        for (const auto& setName : names)
+        {
+            juce::PopupMenu setMenu;
+            bool ticked = false;
+            for (size_t i = 0; i < list.size(); ++i)
+                if (list[i].set == group + "/" + setName)
+                    ticked = itemFor (setMenu, i, true) || ticked;
+            menu.addSubMenu (setName, setMenu, true, juce::Image(), ticked);
+        }
+    }
+
     for (size_t i = 0; i < list.size(); ++i)
     {
-        if (! list[i].factory && ! userHeader)
+        if (list[i].factory)
+            continue;
+        if (! userHeader)
         {
             menu.addSectionHeader ("Yours");
             userHeader = true;
         }
-        menu.addItem ((int) i + 1, list[i].name, true, &list[i] == current);
+        itemFor (menu, i, false);
     }
     if (! userHeader)
+    {
+        menu.addSectionHeader ("Yours");
         menu.addItem (-1, "(Your presets appear here once you SAVE one)", false);
+    }
     menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (findControl ("preset.next")).withTargetScreenArea (
                             localAreaToGlobal (presetDisplay.toNearestInt())),
                         [this, list] (int chosen)

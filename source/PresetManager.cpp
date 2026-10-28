@@ -1,102 +1,10 @@
 #include "PresetManager.h"
 
+#include "FactoryPresets.h"
 #include "Parameters.h"
 
 namespace
 {
-    // The factory presets: starting points (our own settings, not copies of
-    // anything), each only listing what differs from the defaults. Values
-    // are in each parameter's own units (Hz, dB, ms, %, choice index).
-    struct FactoryPreset
-    {
-        const char* name;
-        std::vector<std::pair<juce::String, float>> values;
-    };
-
-    // Choice indexes, in their saved order.
-    constexpr float in = 0, sidechain = 2;               // filterPlacement
-    constexpr float vca = 0, opto = 1, fet = 2;          // compCharacter
-    constexpr float soft = 1;                            // compRatio's SOFT position
-    constexpr float infinite = 30;                       // compRatio at the top
-    constexpr float softLimit = 1, autoLimit = 2;        // limitMode
-    constexpr float fast = 0, medium = 1;                // gateAttack
-
-    const std::vector<FactoryPreset>& factoryPresets()
-    {
-        static const std::vector<FactoryPreset> presets {
-            { PresetManager::defaultName, {} },
-            { "Vocal - Clear Lead", { { "hpfOn", 1 }, { "hpfFreq", 90 },
-                                      { "compOn", 1 }, { "compThreshold", -22 }, { "compRatio", 3 }, { "compAttack", 5 }, { "compRelease", 150 },
-                                      { "compAuto", 1 }, { "compMakeUp", 4 }, { "compCharacter", vca },
-                                      { "lmfFreq", 300 }, { "lmfGain", -2 }, { "hmfFreq", 3000 }, { "hmfGain", 2 },
-                                      { "hfFreq", 10000 }, { "hfGain", 3 },
-                                      { "satOn", 1 }, { "satDrive", 4 }, { "satHarmonics", 20 }, { "toneThd", 20 } } },
-            { "Vocal - Warm Opto", { { "hpfOn", 1 }, { "hpfFreq", 80 },
-                                     { "compOn", 1 }, { "compThreshold", -26 }, { "compRatio", 4 }, { "compAttack", 10 }, { "compRelease", 300 },
-                                     { "compMakeUp", 5 }, { "compCharacter", opto },
-                                     { "mfFreq", 500 }, { "mfGain", -1.5f }, { "hfFreq", 12000 }, { "hfGain", 2 },
-                                     { "satOn", 1 }, { "satDrive", 8 }, { "satHarmonics", 0 }, { "satMix", 60 }, { "toneThd", 30 } } },
-            { "Vocal - Soft Backing", { { "hpfOn", 1 }, { "hpfFreq", 120 }, { "lpfOn", 1 }, { "lpfFreq", 14000 },
-                                        { "compOn", 1 }, { "compThreshold", -24 }, { "compRatio", soft }, { "compAttack", 10 }, { "compRelease", 200 },
-                                        { "compAuto", 1 }, { "compMakeUp", 3 },
-                                        { "hmfFreq", 2500 }, { "hmfGain", -2 }, { "hmfQ", 0.8f }, { "widthOn", 1 }, { "width", 120 } } },
-            { "Kick - Punch", { { "hpfOn", 1 }, { "hpfFreq", 30 },
-                                { "gateOn", 1 }, { "gateThreshold", -30 }, { "gateRange", 30 }, { "gateAttack", fast }, { "gateHold", 50 }, { "gateRelease", 150 },
-                                { "compOn", 1 }, { "compThreshold", -18 }, { "compRatio", 4 }, { "compAttack", 15 }, { "compRelease", 100 },
-                                { "compMakeUp", 3 }, { "compCharacter", fet },
-                                { "lfShelf", 0 }, { "lfFreq", 60 }, { "lfGain", 4 }, { "lmfFreq", 350 }, { "lmfGain", -5 },
-                                { "hmfFreq", 3500 }, { "hmfGain", 3 }, { "hmfQ", 1.4f } } },
-            { "Snare - Crack", { { "hpfOn", 1 }, { "hpfFreq", 80 },
-                                 { "gateOn", 1 }, { "gateThreshold", -35 }, { "gateRange", 20 }, { "gateAttack", fast }, { "gateHold", 50 }, { "gateRelease", 200 },
-                                 { "compOn", 1 }, { "compThreshold", -20 }, { "compRatio", 4 }, { "compAttack", 3 }, { "compRelease", 120 }, { "compMakeUp", 3 },
-                                 { "lmfFreq", 200 }, { "lmfGain", 2 }, { "mfFreq", 800 }, { "mfGain", -2 }, { "mfQ", 1.5f },
-                                 { "hmfFreq", 5000 }, { "hmfGain", 3 }, { "hfGain", 2 },
-                                 { "satOn", 1 }, { "satDrive", 8 }, { "satHarmonics", 60 } } },
-            { "Toms - Tight Gate", { { "hpfOn", 1 }, { "hpfFreq", 60 },
-                                     { "gateOn", 1 }, { "gateThreshold", -30 }, { "gateRange", 40 }, { "gateAttack", medium }, { "gateHold", 100 },
-                                     { "gateRelease", 300 }, { "lmfFreq", 400 }, { "lmfGain", -4 } } },
-            { "Drum Bus - Glue", { { "hpfOn", 1 }, { "hpfFreq", 60 }, { "filterPlacement", sidechain },
-                                   { "compOn", 1 }, { "compThreshold", -20 }, { "compRatio", 2 }, { "compAttack", 30 }, { "compRelease", 300 },
-                                   { "compAuto", 1 }, { "compMakeUp", 2 },
-                                   { "satOn", 1 }, { "satDrive", 6 }, { "satHarmonics", 50 }, { "satMix", 70 }, { "toneThd", 30 } } },
-            { "Room Mics - Crush", { { "hpfOn", 1 }, { "hpfFreq", 150 },
-                                     { "compOn", 1 }, { "compThreshold", -40 }, { "compRatio", infinite }, { "compAttack", 0.5f }, { "compRelease", 80 },
-                                     { "compMakeUp", 14 }, { "compCharacter", fet }, { "satOn", 1 }, { "satDrive", 8 } } },
-            { "Bass - Solid", { { "hpfOn", 1 }, { "hpfFreq", 35 },
-                                { "compOn", 1 }, { "compThreshold", -24 }, { "compRatio", 4 }, { "compAttack", 10 }, { "compRelease", 200 },
-                                { "compMakeUp", 4 }, { "compCharacter", opto },
-                                { "lfFreq", 80 }, { "lfGain", 2 }, { "lmfFreq", 250 }, { "lmfGain", -3 }, { "hmfFreq", 1200 }, { "hmfGain", 2 },
-                                { "satOn", 1 }, { "satDrive", 10 }, { "satHarmonics", 20 }, { "monoOn", 1 }, { "monoFreq", 150 } } },
-            { "Acoustic Guitar - Sparkle", { { "hpfOn", 1 }, { "hpfFreq", 100 },
-                                             { "compOn", 1 }, { "compThreshold", -20 }, { "compRatio", 2 }, { "compAttack", 10 }, { "compRelease", 150 },
-                                             { "compMakeUp", 2 }, { "lmfFreq", 250 }, { "lmfGain", -3 }, { "hmfFreq", 4500 }, { "hmfGain", 2 },
-                                             { "hmfQ", 0.8f }, { "hfFreq", 12000 }, { "hfGain", 3 }, { "widthOn", 1 }, { "width", 120 } } },
-            { "Electric Guitar - Tame", { { "hpfOn", 1 }, { "hpfFreq", 90 }, { "lpfOn", 1 }, { "lpfFreq", 9000 },
-                                          { "hmfFreq", 2500 }, { "hmfGain", -3 }, { "hmfQ", 2 },
-                                          { "satOn", 1 }, { "satDrive", 6 }, { "satHarmonics", 40 }, { "satMix", 50 } } },
-            { "Piano - Bright", { { "hpfOn", 1 }, { "hpfFreq", 40 },
-                                  { "compOn", 1 }, { "compThreshold", -20 }, { "compRatio", soft }, { "compAttack", 20 }, { "compRelease", 300 },
-                                  { "compAuto", 1 }, { "compMakeUp", 2 }, { "lmfFreq", 300 }, { "lmfGain", -2 }, { "hfFreq", 8000 }, { "hfGain", 2 },
-                                  { "widthOn", 1 }, { "width", 115 } } },
-            { "Mix Bus - Console Glue", { { "hpfOn", 1 }, { "hpfFreq", 25 }, { "filterPlacement", sidechain },
-                                          { "compOn", 1 }, { "compThreshold", -16 }, { "compRatio", 1.5f }, { "compAttack", 30 }, { "compRelease", 300 },
-                                          { "compAuto", 1 }, { "compMakeUp", 1.5f },
-                                          { "satOn", 1 }, { "satDrive", 3 }, { "satHarmonics", 30 }, { "satMix", 50 }, { "toneThd", 40 },
-                                          { "monoOn", 1 }, { "monoFreq", 100 }, { "limitOn", 1 }, { "limitThreshold", -1 }, { "limitMode", softLimit } } },
-            { "Master - Loud", { { "compOn", 1 }, { "compThreshold", -18 }, { "compRatio", soft }, { "compAttack", 30 }, { "compRelease", 300 },
-                                 { "compAuto", 1 }, { "compMakeUp", 2 },
-                                 { "limitOn", 1 }, { "limitThreshold", -1 }, { "limitMakeUp", 4 }, { "limitMode", autoLimit },
-                                 { "monoOn", 1 }, { "monoFreq", 120 }, { "widthOn", 1 }, { "width", 110 }, { "toneThd", 20 } } },
-            { "Console - Analog Character", { { "toneThd", 50 }, { "toneVGain", 20 },
-                                              { "satOn", 1 }, { "satDrive", 6 }, { "satHarmonics", 0 }, { "satMix", 40 } } },
-            { "Lo-Fi - Telephone", { { "hpfOn", 1 }, { "hpfFreq", 400 }, { "lpfOn", 1 }, { "lpfFreq", 3000 }, { "filterPlacement", in },
-                                     { "mfFreq", 1200 }, { "mfGain", 6 }, { "mfQ", 1.5f },
-                                     { "satOn", 1 }, { "satDrive", 18 }, { "satVcaClip", 1 }, { "satHarmonics", 70 },
-                                     { "widthOn", 1 }, { "width", 0 } } },
-        };
-        return presets;
-    }
-
     constexpr auto nameProperty = "presetName";
 }
 
@@ -132,7 +40,10 @@ std::vector<PresetManager::Preset> PresetManager::getPresets() const
 {
     std::vector<Preset> presets;
     for (int i = 0; i < getNumFactoryPresets(); ++i)
-        presets.push_back ({ getFactoryName (i), true, i, {} });
+    {
+        const auto& factory = factoryPresets()[(size_t) i];
+        presets.push_back ({ factory.name, true, i, {}, factory.slot(), factory.set, factory.bank });
+    }
 
     auto files = userFolder.findChildFiles (juce::File::findFiles, false, juce::String ("*") + fileExtension);
     std::sort (files.begin(), files.end(), [] (const juce::File& a, const juce::File& b)
@@ -140,7 +51,7 @@ std::vector<PresetManager::Preset> PresetManager::getPresets() const
         return a.getFileNameWithoutExtension().compareNatural (b.getFileNameWithoutExtension()) < 0;
     });
     for (const auto& file : files)
-        presets.push_back ({ file.getFileNameWithoutExtension(), false, -1, file });
+        presets.push_back ({ file.getFileNameWithoutExtension(), false, -1, file, {}, {}, -1 });
     return presets;
 }
 
@@ -219,7 +130,7 @@ void PresetManager::load (const Preset& preset)
 void PresetManager::loadFactory (int index)
 {
     if (juce::isPositiveAndBelow (index, getNumFactoryPresets()))
-        load ({ getFactoryName (index), true, index, {} });
+        load (getPresets()[(size_t) index]);
 }
 
 const PresetManager::Preset* PresetManager::findCurrent (const std::vector<Preset>& presets) const
@@ -276,6 +187,15 @@ bool PresetManager::remove (const Preset& preset)
         parameters.state.setProperty (nameProperty, juce::String(), nullptr);
     }
     return true;
+}
+
+juce::String PresetManager::getCurrentSlot() const
+{
+    const auto name = getCurrentName();
+    for (const auto& preset : factoryPresets())
+        if (preset.name == name)
+            return preset.slot();
+    return {};
 }
 
 juce::String PresetManager::getCurrentName() const

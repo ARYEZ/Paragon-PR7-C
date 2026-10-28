@@ -2,6 +2,14 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## Unreleased
+
+- **162 factory presets, filed like PR7-X's.** Seven banks: **A** Drums, **B** Bass, **C** Guitars, **D** Synths & Keys, **E** Vocals & Voice, **F** Mix, **G** Mastering.
+  - **01 to 10** in each bank: single presets (Kick Punch, Snare Crack, Bass Growl, Clear Lead Vocal, Mix Bus Console Glue, Master Loud...). The 16 old ones are here, renamed and filed.
+  - **11 to 19: nine genres** (Modern Metal, Metalcore, Djent, Nu Metal, Argent Metal, Hard Rock, Grunge, Symphonic Metal, Industrial), and **31 to 38: eight signature sounds** (Ethereal Djent, Dark Synth Metal, Raw 90s Nu Metal, Clean Prog Djent, Cinematic Post-Hardcore, Swedish Melodic Death, Early 2000s Metalcore, Polished Nu Metal). Each has a preset for the vocal, drums, guitars, bass, mix and master, at the same number in each bank, so a whole song can start from one style.
+  - The list has a submenu per bank, and Genres and Signature Sounds submenus with each style's six parts together. The header shows the slot, e.g. "A11  Modern Metal Drums".
+  - They're our own starting points, not anyone's settings, and haven't been tuned by ear yet.
+
 ## 0.4.2
 
 **New: a fourth compressor character, MODERN, and EDGE on the SC FILTER.** Everything else is unchanged from 0.4.1.

@@ -30,9 +30,14 @@ public:
         bool factory = true;
         int factoryIndex = -1;   // factory presets
         juce::File file;         // user presets
+        // Factory presets' filing (see FactoryPresets.h): "A01", bank 0 to 6
+        // (-1 for Default and yours), and "Genres/<genre>" or
+        // "Signature Sounds/<sound>" for a set's parts.
+        juce::String slot, set;
+        int bank = -1;
     };
 
-    // Factory presets first (in their order), then the user's (A to Z).
+    // Factory presets first (Default, then by bank and number), then the user's (A to Z).
     std::vector<Preset> getPresets() const;
     static int getNumFactoryPresets();
     static juce::String getFactoryName (int index);
@@ -49,6 +54,9 @@ public:
     bool remove (const Preset&);
 
     juce::String getCurrentName() const;
+    // The current factory preset's slot ("A01"), or empty. Cheap: it doesn't
+    // read the user folder, so the header can ask often.
+    juce::String getCurrentSlot() const;
     const Preset* findCurrent (const std::vector<Preset>&) const;
     bool isModified() const;
     // After the host restores a song: work out what the named preset holds,
