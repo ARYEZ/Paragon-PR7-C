@@ -2,7 +2,9 @@
 
 Each version's notes appear on its GitHub Release page.
 
-## Unreleased
+## 0.4.4
+
+**Tracks stay in time, and PR7-C is much lighter on the computer.** The sound and the controls are otherwise unchanged from 0.4.3.
 
 - **Tracks stay lined up in time, whatever is switched on.** SATURATION and THD work at a higher internal sample rate (so their harmonics don't fold back as harsh aliasing), and the filters that make that possible delay the sound by about 0.1 ms. Before, that delay came and went as you switched them on and off, and the DAW wasn't told: on the same sound across two tracks (a snare top and bottom mic, a parallel copy), that could thin out the highs. Now PR7-C always delays the sound by the same 7 samples (0.15 ms at 48 kHz) and tells the DAW, which lines everything up. You won't hear the delay itself.
 - **Much lighter on the computer.** An idle PR7-C (its defaults) now uses about an eighth of the CPU it did, and one with everything on about 40% less. SATURATION was the heavy one; it no longer works out curves it isn't using, and SATURATION and THD no longer keep their filters running while off (they warm up instantly from the last moment of audio when switched on, so there's still no click).
