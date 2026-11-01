@@ -730,7 +730,7 @@ void MainView::showPresetList()
 {
     // Filed as PR7-X files its rigs: Default, then a submenu per bank (A
     // drums to G mastering: its own presets, then its parts of the genre and
-    // signature sets), then the sets themselves (each with its six parts),
+    // signature sets), then the sets themselves (each with its seven parts),
     // then yours. Submenus keep it shorter than the screen.
     auto& presets = processor.getPresets();
     const auto list = presets.getPresets();

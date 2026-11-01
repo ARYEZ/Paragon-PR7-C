@@ -227,8 +227,8 @@ TEST_CASE ("Presets: filed as PR7-X files its rigs (banks A to G, genre and sign
             CHECK ((preset.number >= 1 && preset.number <= 10));
     }
 
-    // Each genre (11 to 19) and signature sound (31 to 38): six parts, at the
-    // same number in every bank but synths and keys.
+    // Each genre (11 to 19) and signature sound (31 to 38): seven parts, one
+    // at the same number in every bank.
     const auto checkSet = [&] (const juce::String& set, int number)
     {
         INFO (set.toStdString());
@@ -239,8 +239,8 @@ TEST_CASE ("Presets: filed as PR7-X files its rigs (banks A to G, genre and sign
                 CHECK (preset.number == number);
                 banks.insert (preset.bank);
             }
-        CHECK (banks == std::set<int> { FactoryBanks::drums, FactoryBanks::bass, FactoryBanks::guitars, FactoryBanks::vocals,
-                                         FactoryBanks::mix, FactoryBanks::master });
+        CHECK (banks == std::set<int> { FactoryBanks::drums, FactoryBanks::bass, FactoryBanks::guitars, FactoryBanks::synths,
+                                         FactoryBanks::vocals, FactoryBanks::mix, FactoryBanks::master });
     };
     for (int i = 0; i < FactoryBanks::genres.size(); ++i)
         checkSet ("Genres/" + FactoryBanks::genres[i], 11 + i);

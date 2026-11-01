@@ -10,8 +10,8 @@
 // and voice, F the mix, G mastering. In each bank, 01 to 10 are single
 // presets; 11 to 19 are the nine genre sets and 31 to 38 the eight
 // signature-sound sets, one preset per part of a song (vocal, drums,
-// guitars, bass, mix, master) at the same number in each bank, so a whole
-// song can be set up from one style. "Default" comes first, outside the
+// guitars, bass, synths and keys, mix, master) at the same number in each
+// bank, so a whole song can be set up from one style. "Default" comes first, outside the
 // banks.
 //
 // They're our own reading of each sound and style, not anyone's settings,

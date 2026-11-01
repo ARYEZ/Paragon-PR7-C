@@ -288,6 +288,19 @@ namespace
              + saturation (round1 (lerp (4, 16, s.grit)), s.harmonics, 70) + monoMaker (150);
     }
 
+    // Synths and keys: in these styles mostly a layer behind the guitars and
+    // vocal (pads, leads, piano, strings), so they're kept out of the low end
+    // and the low mids, held even by a gentle opto, and made the widest part.
+    Values styleSynths (const Style& s)
+    {
+        return hpf (round1 (lerp (90, 180, s.aggression)))
+             + comp (opto, round1 (lerp (-20, -26, s.aggression)), round1 (lerp (2, 4, s.aggression)), 20, 300, round1 (lerp (1.5f, 3, s.aggression)))
+             + bell ("lmf", 350, round1 (lerp (-1, -3, s.weight)), 0) + bell ("hmf", 2500, round1 (lerp (-1, 2, s.brightness)), 1)
+             + highShelf (10000, round1 (lerp (0, 2.5f, s.brightness)))
+             + saturation (round1 (lerp (2, 10, s.grit)), s.harmonics, 50)
+             + width (round1 (lerp (110, 160, juce::jlimit (0.0f, 1.0f, (s.widthPercent - 100) / 30)))) + monoMaker (150);
+    }
+
     Values styleMix (const Style& s)
     {
         return filtersOnSidechain (60)
@@ -313,6 +326,7 @@ namespace
         b.add (drums, number, name + " Drums", tags + ",Drums", styleDrums (s), set);
         b.add (guitars, number, name + " Guitars", tags + ",Guitar", styleGuitars (s), set);
         b.add (bass, number, name + " Bass", tags + ",Bass", styleBass (s), set);
+        b.add (synths, number, name + " Synths", tags + ",Synth,Keys", styleSynths (s), set);
         b.add (mix, number, name + " Mix", tags + ",Mix", styleMix (s), set);
         b.add (master, number, name + " Master", tags + ",Mastering", styleMaster (s), set);
     }

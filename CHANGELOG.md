@@ -2,6 +2,12 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## Unreleased
+
+- **Synths & keys presets for every genre and signature sound.** Each of the 17 sets now has a seventh part in bank D, at the same number as the rest of its set: **D11 to D19** (Modern Metal Synths ... Industrial Synths) and **D31 to D38** (Ethereal Djent Synths ... Polished Nu Metal Synths). 179 factory presets in all.
+  - They treat synths and keys as a layer behind the guitars and vocal: low end and low mids cleared for the bass and guitars, a gentle compressor to keep them even, presence and air that rise with the style's brightness, saturation that follows its grit, and the most width in each set (with the lows kept centred).
+  - Like the other parts, they're our own starting points, not tuned by ear yet.
+
 ## 0.4.4
 
 **Tracks stay in time, and PR7-C is much lighter on the computer.** The sound and the controls are otherwise unchanged from 0.4.3.
