@@ -2,7 +2,9 @@
 
 Each version's notes appear on its GitHub Release page.
 
-## Unreleased
+## 0.4.6
+
+**Gentler compression in the presets, and the mastering presets no longer clip.** The controls and the modules themselves are unchanged from 0.4.5.
 
 - **Gentler compression in the factory presets: no more pumping.** You heard everything pumping, and measuring every preset on a hot drum-and-music mix showed why: low thresholds (lots of compression) with fast releases (80 to 150 ms) on the hardest-reacting characters (FET, MODERN, VCA), so the level ducked on every hit and swung back before the next. Across the presets the average swing was 4.6 dB per beat; it's now 2.9 dB (mix bus presets about 2 dB, masters about 1.6 dB), and the compression itself is about half what it was (4.8 to 2.6 dB on average).
   - Thresholds are 2 to 4 dB higher (make-up lowered to match, so levels stay about the same), releases are at least 150 ms (most 200 to 400 ms, so the level settles instead of bouncing back), and the steepest ratios are lower (6:1 or 8:1 down to 4:1 to 6:1).
