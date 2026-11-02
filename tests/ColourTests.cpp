@@ -2,6 +2,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
 #include "Parameters.h"
+#include "Latency.h"
 #include "PluginProcessor.h"
 
 using Catch::Matchers::WithinAbs;
@@ -91,6 +92,15 @@ namespace
         return true;
     }
 
+    // The output is the input, untouched but for the strip's delay.
+    bool identicalButDelayed (const juce::AudioBuffer<float>& input, const juce::AudioBuffer<float>& output, int channel)
+    {
+        for (int i = 0; i < input.getNumSamples(); ++i)
+            if (! juce::exactlyEqual (delayedInput (input, channel, i), output.getSample (channel, i)))
+                return false;
+        return true;
+    }
+
     // Music-like test audio: a few tones, different on each side.
     juce::AudioBuffer<float> chord (int numSamples)
     {
@@ -127,8 +137,8 @@ TEST_CASE ("Colour: the defaults leave the audio untouched, on any channel", "[c
             const auto input = chord (24000);
             auto output = input;
             process (*processor, output);
-            CHECK (identical (input, 0, output, 0));
-            CHECK (identical (input, 1, output, 1));
+            CHECK (identicalButDelayed (input, output, 0));
+            CHECK (identicalButDelayed (input, output, 1));
         }
     }
 }

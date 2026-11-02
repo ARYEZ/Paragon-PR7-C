@@ -227,8 +227,8 @@ TEST_CASE ("Presets: filed as PR7-X files its rigs (banks A to G, genre and sign
             CHECK ((preset.number >= 1 && preset.number <= 10));
     }
 
-    // Each genre (11 to 19) and signature sound (31 to 38): six parts, at the
-    // same number in every bank but synths and keys.
+    // Each genre (11 to 19) and signature sound (31 to 38): seven parts, one
+    // at the same number in every bank.
     const auto checkSet = [&] (const juce::String& set, int number)
     {
         INFO (set.toStdString());
@@ -239,8 +239,8 @@ TEST_CASE ("Presets: filed as PR7-X files its rigs (banks A to G, genre and sign
                 CHECK (preset.number == number);
                 banks.insert (preset.bank);
             }
-        CHECK (banks == std::set<int> { FactoryBanks::drums, FactoryBanks::bass, FactoryBanks::guitars, FactoryBanks::vocals,
-                                         FactoryBanks::mix, FactoryBanks::master });
+        CHECK (banks == std::set<int> { FactoryBanks::drums, FactoryBanks::bass, FactoryBanks::guitars, FactoryBanks::synths,
+                                         FactoryBanks::vocals, FactoryBanks::mix, FactoryBanks::master });
     };
     for (int i = 0; i < FactoryBanks::genres.size(); ++i)
         checkSet ("Genres/" + FactoryBanks::genres[i], 11 + i);
@@ -250,4 +250,32 @@ TEST_CASE ("Presets: filed as PR7-X files its rigs (banks A to G, genre and sign
     // In bank order, so the arrows step A01, A02... G38.
     for (size_t i = 2; i < presets.size(); ++i)
         CHECK ((presets[i - 1].bank < presets[i].bank || (presets[i - 1].bank == presets[i].bank && presets[i - 1].number < presets[i].number)));
+}
+
+TEST_CASE ("Presets: no factory preset's limiter lets the output past -1 dBFS", "[presets]")
+{
+    // MAKE UP comes after the limiter, so its ceiling is THRESHOLD + MAKE UP.
+    ParagonPR7CAudioProcessor processor;
+    for (int i = 0; i < PresetManager::getNumFactoryPresets(); ++i)
+    {
+        INFO (PresetManager::getFactoryName (i).toStdString());
+        processor.getPresets().loadFactory (i);
+        if (valueOf (processor, ParamIDs::limitOn) < 0.5f || valueOf (processor, ParamIDs::limitMix) < 100.0f)
+            continue;   // off, or blended with the dry (some peaks come back anyway)
+        CHECK (valueOf (processor, ParamIDs::limitThreshold) + valueOf (processor, ParamIDs::limitMakeUp) <= -1.0f + 0.05f);
+    }
+}
+
+TEST_CASE ("Presets: no factory preset's compressor lets go fast enough to pump", "[presets]")
+{
+    // The owner heard everything pumping with releases of 80 to 150 ms on
+    // hard compression; the presets now let go over 150 ms or more.
+    ParagonPR7CAudioProcessor processor;
+    for (int i = 0; i < PresetManager::getNumFactoryPresets(); ++i)
+    {
+        INFO (PresetManager::getFactoryName (i).toStdString());
+        processor.getPresets().loadFactory (i);
+        if (valueOf (processor, ParamIDs::compOn) >= 0.5f)
+            CHECK (valueOf (processor, ParamIDs::compRelease) >= 150.0f);
+    }
 }

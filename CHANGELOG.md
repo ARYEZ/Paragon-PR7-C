@@ -2,6 +2,31 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.4.6
+
+**Gentler compression in the presets, and the mastering presets no longer clip.** The controls and the modules themselves are unchanged from 0.4.5.
+
+- **Gentler compression in the factory presets: no more pumping.** You heard everything pumping, and measuring every preset on a hot drum-and-music mix showed why: low thresholds (lots of compression) with fast releases (80 to 150 ms) on the hardest-reacting characters (FET, MODERN, VCA), so the level ducked on every hit and swung back before the next. Across the presets the average swing was 4.6 dB per beat; it's now 2.9 dB (mix bus presets about 2 dB, masters about 1.6 dB), and the compression itself is about half what it was (4.8 to 2.6 dB on average).
+  - Thresholds are 2 to 4 dB higher (make-up lowered to match, so levels stay about the same), releases are at least 150 ms (most 200 to 400 ms, so the level settles instead of bouncing back), and the steepest ratios are lower (6:1 or 8:1 down to 4:1 to 6:1).
+  - Room Mics Crush and Drum Bus Smash still pump (that's their job), a little less hard.
+  - The compressor itself is unchanged: making its fast-release behaviours gentler was tried and barely helped, so the fix is in how the presets set it.
+- **Fixed: the mastering presets went over 0 dBFS.** The limiter's MAKE UP comes after it, so its ceiling is THRESHOLD + MAKE UP; the masters were set to -1 dB threshold with 2 to 6 dB of make-up, putting peaks at +1 to +5 dBFS (clipping on export). They now push into the limiter instead, with the ceiling at -1 dBFS (-1.5 for Streaming Safe), and the genre and signature masters push a little less (1.5 to 4 dB instead of 2 to 6).
+
+## 0.4.5
+
+**New: synths & keys presets for every genre and signature sound.** The sound and the controls are unchanged from 0.4.4.
+
+- **Synths & keys presets for every genre and signature sound.** Each of the 17 sets now has a seventh part in bank D, at the same number as the rest of its set: **D11 to D19** (Modern Metal Synths ... Industrial Synths) and **D31 to D38** (Ethereal Djent Synths ... Polished Nu Metal Synths). 179 factory presets in all.
+  - They treat synths and keys as a layer behind the guitars and vocal: low end and low mids cleared for the bass and guitars, a gentle compressor to keep them even, presence and air that rise with the style's brightness, saturation that follows its grit, and the most width in each set (with the lows kept centred).
+  - Like the other parts, they're our own starting points, not tuned by ear yet.
+
+## 0.4.4
+
+**Tracks stay in time, and PR7-C is much lighter on the computer.** The sound and the controls are otherwise unchanged from 0.4.3.
+
+- **Tracks stay lined up in time, whatever is switched on.** SATURATION and THD work at a higher internal sample rate (so their harmonics don't fold back as harsh aliasing), and the filters that make that possible delay the sound by about 0.1 ms. Before, that delay came and went as you switched them on and off, and the DAW wasn't told: on the same sound across two tracks (a snare top and bottom mic, a parallel copy), that could thin out the highs. Now PR7-C always delays the sound by the same 7 samples (0.15 ms at 48 kHz) and tells the DAW, which lines everything up. You won't hear the delay itself.
+- **Much lighter on the computer.** An idle PR7-C (its defaults) now uses about an eighth of the CPU it did, and one with everything on about 40% less. SATURATION was the heavy one; it no longer works out curves it isn't using, and SATURATION and THD no longer keep their filters running while off (they warm up instantly from the last moment of audio when switched on, so there's still no click).
+
 ## 0.4.3
 
 **New: 162 factory presets.** The sound and the controls are unchanged from 0.4.2.

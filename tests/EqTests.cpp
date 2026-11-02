@@ -2,6 +2,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
 #include "Parameters.h"
+#include "Latency.h"
 #include "PluginProcessor.h"
 
 using Catch::Matchers::WithinAbs;
@@ -175,7 +176,7 @@ TEST_CASE ("A band switched off leaves the audio untouched", "[eq]")
     auto output = input;
     process (*strip, output);
     for (int i = 0; i < input.getNumSamples(); ++i)
-        REQUIRE_THAT (output.getSample (0, i), WithinAbs (input.getSample (0, i), 1.0e-6));
+        REQUIRE_THAT (output.getSample (0, i), WithinAbs (delayedInput (input, 0, i), 1.0e-6));
 }
 
 TEST_CASE ("HPF and LPF roll off at 12 dB an octave", "[eq]")

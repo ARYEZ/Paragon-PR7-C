@@ -2,6 +2,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
 #include "Parameters.h"
+#include "Latency.h"
 #include "PluginProcessor.h"
 
 using Catch::Matchers::WithinAbs;
@@ -52,7 +53,7 @@ TEST_CASE ("At its defaults the strip passes stereo audio through untouched", "[
 
     for (int channel = 0; channel < 2; ++channel)
         for (int i = 0; i < input.getNumSamples(); ++i)
-            REQUIRE_THAT (output.getSample (channel, i), WithinAbs (input.getSample (channel, i), 1.0e-6));
+            REQUIRE_THAT (output.getSample (channel, i), WithinAbs (delayedInput (input, channel, i), 1.0e-6));
 }
 
 TEST_CASE ("Defaults read back exactly, so modules at their defaults switch themselves off", "[processor]")
@@ -208,7 +209,7 @@ TEST_CASE ("Phase invert flips the polarity of both channels", "[processor]")
     // After the 20 ms glide, every sample is the input's, upside down.
     for (int channel = 0; channel < 2; ++channel)
         for (int i = 4800; i < 9600; ++i)
-            REQUIRE_THAT (output.getSample (channel, i), WithinAbs (-input.getSample (channel, i), 1.0e-6));
+            REQUIRE_THAT (output.getSample (channel, i), WithinAbs (-delayedInput (input, channel, i), 1.0e-6));
 }
 
 TEST_CASE ("Flipping phase invert or MUTE mid-signal glides instead of clicking", "[processor]")
@@ -271,4 +272,66 @@ TEST_CASE ("The fader at the very bottom is silence", "[processor]")
     for (int channel = 0; channel < 2; ++channel)
         CHECK (output.getMagnitude (channel, 4800, 4800) == 0.0f);
     CHECK (processor.getParameters().getParameter (ParamIDs::outputLevel)->getCurrentValueAsText() == "-inf dB");
+}
+
+namespace
+{
+    // How many samples later a quiet sine comes out (its phase delay). A
+    // phase can't tell delays a whole cycle apart, so the one nearest
+    // `expected`.
+    double measuredDelay (ParagonPR7CAudioProcessor& processor, float frequency, double expected)
+    {
+        juce::AudioBuffer<float> buffer (2, 48000);
+        const auto omega = juce::MathConstants<double>::twoPi * frequency / sampleRate;
+        for (int i = 0; i < buffer.getNumSamples(); ++i)
+            for (int channel = 0; channel < 2; ++channel)
+                buffer.setSample (channel, i, (float) (0.01 * std::sin (omega * i)));
+        process (processor, buffer);
+        double sine = 0.0, cosine = 0.0;
+        for (int i = 24000; i < buffer.getNumSamples(); ++i)
+        {
+            sine += buffer.getSample (0, i) * std::sin (omega * i);
+            cosine += buffer.getSample (0, i) * std::cos (omega * i);
+        }
+        const auto cycle = sampleRate / frequency;
+        auto delay = -std::atan2 (cosine, sine) / omega;
+        delay += cycle * std::round ((expected - delay) / cycle);
+        return delay;
+    }
+}
+
+TEST_CASE ("The strip's delay is reported to the host, and the same whatever is on", "[processor]")
+{
+    // SATURATION and THD run oversampled, and their filters delay the sound
+    // a little; while they're off, the sound is delayed as much instead, so
+    // two tracks with different settings still line up.
+    const auto check = [] (bool saturation, bool thd)
+    {
+        ParagonPR7CAudioProcessor processor;
+        processor.prepareToPlay (sampleRate, blockSize);
+        CHECK (processor.getLatencySamples() == ParagonPR7CAudioProcessor::latencySamples);
+        setParameter (processor, ParamIDs::satOn, saturation ? 1.0f : 0.0f);
+        setParameter (processor, ParamIDs::toneThd, thd ? 100.0f : 0.0f);
+        for (const auto frequency : { 1000.0f, 5000.0f })
+        {
+            INFO ("saturation " << saturation << ", THD " << thd << ", " << frequency << " Hz");
+            // Off, exactly; on, within a fraction of a sample (the filters'
+            // delay isn't a whole number of samples).
+            CHECK_THAT (measuredDelay (processor, frequency, ParagonPR7CAudioProcessor::latencySamples), WithinAbs (ParagonPR7CAudioProcessor::latencySamples, saturation || thd ? 0.8 : 0.01));
+        }
+    };
+    check (false, false);
+    check (true, false);
+    check (false, true);
+    check (true, true);
+}
+
+TEST_CASE ("The delays the strip makes up for match its oversampling filters", "[processor]")
+{
+    // If the oversampling changes, these must too.
+    using Oversampling = juce::dsp::Oversampling<float>;
+    Oversampling saturation (2, effects::Saturation::oversamplingStages, Oversampling::filterHalfBandPolyphaseIIR, true, false);
+    Oversampling thd (2, 1, Oversampling::filterHalfBandPolyphaseIIR, true, false);
+    CHECK (juce::roundToInt (saturation.getLatencyInSamples()) == effects::Saturation::latencySamples);
+    CHECK (juce::roundToInt (thd.getLatencyInSamples()) == effects::ConsoleColour::latencySamples);
 }

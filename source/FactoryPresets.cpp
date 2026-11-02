@@ -99,104 +99,104 @@ namespace
     // A: drums
     void addDrums (Builder& b)
     {
-        b.add (drums, 1, "Kick Punch", "Kick", hpf (30) + gate (-30, 30, fast, 50, 150) + comp (fet, -18, 4, 15, 100, 3)
+        b.add (drums, 1, "Kick Punch", "Kick", hpf (30) + gate (-30, 30, fast, 50, 150) + comp (fet, -14, 4, 15, 200, 2)
                                                  + bell ("lf", 60, 4, 0) + bell ("lmf", 350, -5, 0) + bell ("hmf", 3500, 3, 1.4f));
-        b.add (drums, 2, "Kick Boom Control", "Kick", hpf (30) + comp (opto, -24, 4, 10, 200, 3) + lowShelf (80, -3)
+        b.add (drums, 2, "Kick Boom Control", "Kick", hpf (30) + comp (opto, -20, 3, 10, 300, 2) + lowShelf (80, -3)
                                                         + bell ("hmf", 4000, 2, 1.2f) + sidechain (20));
-        b.add (drums, 3, "Snare Crack", "Snare", hpf (80) + gate (-35, 20, fast, 50, 200) + comp (vca, -20, 4, 3, 120, 3)
+        b.add (drums, 3, "Snare Crack", "Snare", hpf (80) + gate (-35, 20, fast, 50, 200) + comp (vca, -16, 4, 5, 200, 2)
                                                    + bell ("lmf", 200, 2, 0) + bell ("mf", 800, -2, 1.5f) + bell ("hmf", 5000, 3, 1)
                                                    + highShelf (10000, 2) + saturation (8, 60));
-        b.add (drums, 4, "Snare Fat", "Snare", hpf (70) + comp (modern, -22, 6, 8, 150, 4, false, second) + bell ("lmf", 180, 3, 0)
+        b.add (drums, 4, "Snare Fat", "Snare", hpf (70) + comp (modern, -18, 4, 8, 250, 3, false, second) + bell ("lmf", 180, 3, 0)
                                                  + bell ("hmf", 2500, -1.5f, 1) + highShelf (8000, 1.5f));
         b.add (drums, 5, "Toms Tight Gate", "Toms", hpf (60) + gate (-30, 40, medium, 100, 300) + bell ("lmf", 400, -4, 0)
                                                       + bell ("hmf", 3500, 2, 1));
-        b.add (drums, 6, "Hi-Hat Tame", "Hi-hat,Cymbals", hpf (250) + comp (vca, -24, 3, 2, 80, 2) + sidechain (200, true)
+        b.add (drums, 6, "Hi-Hat Tame", "Hi-hat,Cymbals", hpf (250) + comp (vca, -20, 3, 2, 200, 1) + sidechain (200, true)
                                                             + bell ("hmf", 4500, -1.5f, 1.5f) + highShelf (12000, 1));
-        b.add (drums, 7, "Overheads Smooth", "Overheads,Cymbals", hpf (120) + comp (opto, -20, 2, 15, 300, 2) + sidechain (60, true)
+        b.add (drums, 7, "Overheads Smooth", "Overheads,Cymbals", hpf (120) + comp (opto, -18, 2, 15, 400, 1) + sidechain (60, true)
                                                                     + bell ("lmf", 400, -2, 0) + highShelf (12000, 2) + width (115));
-        b.add (drums, 8, "Room Mics Crush", "Room", hpf (150) + comp (fet, -40, infinite, 0.5f, 80, 14) + saturation (8, 50));
-        b.add (drums, 9, "Drum Bus Glue", "Bus", filtersOnSidechain (60) + comp (vca, -20, 2, 30, 300, 2, true)
+        b.add (drums, 8, "Room Mics Crush", "Room", hpf (150) + comp (fet, -34, infinite, 0.5f, 150, 10) + saturation (8, 50));
+        b.add (drums, 9, "Drum Bus Glue", "Bus", filtersOnSidechain (60) + comp (vca, -16, 2, 30, 400, 1, true)
                                                    + saturation (6, 50, 70) + colour (30));
-        b.add (drums, 10, "Drum Bus Smash", "Bus,Parallel", filtersOnSidechain (60) + comp (modern, -30, 20, 2, 80, 6, false, secondAndThird)
+        b.add (drums, 10, "Drum Bus Smash", "Bus,Parallel", filtersOnSidechain (60) + comp (modern, -26, 10, 2, 150, 5, false, secondAndThird)
                                                               + limiter (-6, 3, brick, 45) + bell ("lf", 60, 2, 0) + highShelf (10000, 2));
     }
 
     // B: bass
     void addBass (Builder& b)
     {
-        b.add (bass, 1, "Bass Solid", "Bass", hpf (35) + comp (opto, -24, 4, 10, 200, 4) + lowShelf (80, 2) + bell ("lmf", 250, -3, 0)
+        b.add (bass, 1, "Bass Solid", "Bass", hpf (35) + comp (opto, -20, 4, 10, 300, 3) + lowShelf (80, 2) + bell ("lmf", 250, -3, 0)
                                                 + bell ("hmf", 1200, 2, 1) + saturation (10, 20) + monoMaker (150));
-        b.add (bass, 2, "Bass DI Even", "Bass,DI", hpf (35) + comp (vca, -22, 4, 15, 150, 4) + bell ("lmf", 250, -2.5f, 0)
+        b.add (bass, 2, "Bass DI Even", "Bass,DI", hpf (35) + comp (vca, -18, 3, 15, 250, 3) + bell ("lmf", 250, -2.5f, 0)
                                                      + bell ("hmf", 800, 1.5f, 1));
-        b.add (bass, 3, "Bass Growl", "Bass,Drive", hpf (40) + comp (modern, -24, 6, 10, 120, 4, false, secondAndThird)
+        b.add (bass, 3, "Bass Growl", "Bass,Drive", hpf (40) + comp (modern, -18, 4, 10, 350, 3, false, secondAndThird)
                                                       + bell ("hmf", 1000, 3, 1.2f) + saturation (14, 40));
-        b.add (bass, 4, "Slap Bass", "Bass,Slap", hpf (40) + comp (fet, -20, 6, 1, 100, 3) + bell ("lmf", 300, -3, 0)
+        b.add (bass, 4, "Slap Bass", "Bass,Slap", hpf (40) + comp (fet, -16, 4, 2, 200, 2) + bell ("lmf", 300, -3, 0)
                                                     + bell ("hmf", 2500, 2, 1) + highShelf (8000, 2));
-        b.add (bass, 5, "808 Control", "Bass,808", hpf (25) + comp (opto, -20, 3, 20, 300, 2) + bell ("hmf", 1200, 2, 1)
+        b.add (bass, 5, "808 Control", "Bass,808", hpf (25) + comp (opto, -18, 3, 20, 400, 1) + bell ("hmf", 1200, 2, 1)
                                                      + lpf (8000) + saturation (8, 30) + monoMaker (200));
-        b.add (bass, 6, "Synth Bass Tight", "Bass,Synth", hpf (30) + comp (vca, -22, 4, 5, 100, 3) + bell ("lmf", 200, -2, 0)
+        b.add (bass, 6, "Synth Bass Tight", "Bass,Synth", hpf (30) + comp (vca, -18, 3, 5, 200, 2) + bell ("lmf", 200, -2, 0)
                                                             + monoMaker (180));
-        b.add (bass, 7, "Upright Bass", "Bass,Acoustic", hpf (40) + comp (opto, -24, 3, 15, 300, 3) + bell ("lmf", 160, -2, 0)
+        b.add (bass, 7, "Upright Bass", "Bass,Acoustic", hpf (40) + comp (opto, -20, 3, 15, 400, 2) + bell ("lmf", 160, -2, 0)
                                                            + bell ("hmf", 2000, 1.5f, 1) + colour (20));
-        b.add (bass, 8, "Bass Amp Warm", "Bass,Amp", hpf (40) + comp (modern, -22, 4, 10, 200, 3, false, second) + lowShelf (100, 1.5f)
+        b.add (bass, 8, "Bass Amp Warm", "Bass,Amp", hpf (40) + comp (modern, -18, 3, 10, 300, 2, false, second) + lowShelf (100, 1.5f)
                                                        + lpf (6000) + colour (40));
     }
 
     // C: guitars
     void addGuitars (Builder& b)
     {
-        b.add (guitars, 1, "Acoustic Sparkle", "Acoustic", hpf (100) + comp (vca, -20, 2, 10, 150, 2) + bell ("lmf", 250, -3, 0)
+        b.add (guitars, 1, "Acoustic Sparkle", "Acoustic", hpf (100) + comp (vca, -18, 2, 10, 250, 1) + bell ("lmf", 250, -3, 0)
                                                              + bell ("hmf", 4500, 2, 0.8f) + highShelf (12000, 3) + width (120));
         b.add (guitars, 2, "Electric Guitar Tame", "Electric", hpf (90) + lpf (9000) + bell ("hmf", 2500, -3, 2) + saturation (6, 40, 50));
-        b.add (guitars, 3, "Rhythm Guitar Tight", "Electric,Rhythm", hpf (110) + lpf (10000) + comp (vca, -20, 3, 10, 120, 2)
+        b.add (guitars, 3, "Rhythm Guitar Tight", "Electric,Rhythm", hpf (110) + lpf (10000) + comp (vca, -18, 2.5f, 10, 200, 1)
                                                                        + bell ("mf", 600, -2, 1) + bell ("hmf", 2500, 1, 1));
-        b.add (guitars, 4, "Lead Guitar Sustain", "Electric,Lead", hpf (90) + comp (opto, -26, 4, 10, 400, 5) + bell ("hmf", 1500, 2, 1)
+        b.add (guitars, 4, "Lead Guitar Sustain", "Electric,Lead", hpf (90) + comp (opto, -22, 4, 10, 500, 4) + bell ("hmf", 1500, 2, 1)
                                                                      + lpf (11000));
-        b.add (guitars, 5, "Clean Guitar Shine", "Electric,Clean", hpf (90) + comp (vca, -22, 3, 8, 150, 3) + bell ("lmf", 300, -1.5f, 0)
+        b.add (guitars, 5, "Clean Guitar Shine", "Electric,Clean", hpf (90) + comp (vca, -18, 3, 8, 250, 2) + bell ("lmf", 300, -1.5f, 0)
                                                                      + highShelf (10000, 2.5f));
         b.add (guitars, 6, "High Gain Fizz Control", "Electric,High gain", hpf (100) + lpf (8000) + bell ("hmf", 3500, -2.5f, 2)
-                                                                             + comp (vca, -20, 2, 10, 120, 1) + sidechain (60, true));
-        b.add (guitars, 7, "Acoustic Strum Even", "Acoustic", hpf (90) + comp (opto, -24, 4, 15, 250, 4) + bell ("lmf", 200, -2, 0)
+                                                                             + comp (vca, -18, 2, 10, 200, 1) + sidechain (60, true));
+        b.add (guitars, 7, "Acoustic Strum Even", "Acoustic", hpf (90) + comp (opto, -20, 3, 15, 350, 3) + bell ("lmf", 200, -2, 0)
                                                                 + highShelf (10000, 2));
-        b.add (guitars, 8, "Guitar Bus", "Bus", hpf (80) + comp (vca, -18, 2, 20, 200, 1, true) + bell ("mf", 500, -1.5f, 0.8f)
+        b.add (guitars, 8, "Guitar Bus", "Bus", hpf (80) + comp (vca, -16, 2, 20, 300, 1, true) + bell ("mf", 500, -1.5f, 0.8f)
                                                   + colour (25));
     }
 
     // D: synths and keys
     void addSynths (Builder& b)
     {
-        b.add (synths, 1, "Piano Bright", "Piano", hpf (40) + comp (vca, -20, soft, 20, 300, 2, true) + bell ("lmf", 300, -2, 0)
+        b.add (synths, 1, "Piano Bright", "Piano", hpf (40) + comp (vca, -18, soft, 20, 400, 1, true) + bell ("lmf", 300, -2, 0)
                                                      + highShelf (8000, 2) + width (115));
-        b.add (synths, 2, "Piano Warm", "Piano", hpf (40) + comp (opto, -22, 3, 20, 400, 2) + highShelf (9000, -1.5f) + lowShelf (120, 1)
+        b.add (synths, 2, "Piano Warm", "Piano", hpf (40) + comp (opto, -20, 3, 20, 500, 1) + highShelf (9000, -1.5f) + lowShelf (120, 1)
                                                    + colour (30));
-        b.add (synths, 3, "Electric Piano", "Keys", hpf (60) + comp (modern, -22, 4, 10, 200, 2, false, second) + bell ("hmf", 1500, 1.5f, 1));
-        b.add (synths, 4, "Synth Pad Wide", "Synth,Pad", hpf (120) + comp (opto, -24, 2, 30, 600, 2) + width (150) + monoMaker (150));
-        b.add (synths, 5, "Synth Lead Bite", "Synth,Lead", hpf (150) + comp (fet, -20, 4, 3, 100, 3) + bell ("hmf", 3000, 2.5f, 1)
+        b.add (synths, 3, "Electric Piano", "Keys", hpf (60) + comp (modern, -18, 3, 10, 300, 2, false, second) + bell ("hmf", 1500, 1.5f, 1));
+        b.add (synths, 4, "Synth Pad Wide", "Synth,Pad", hpf (120) + comp (opto, -22, 2, 30, 600, 1) + width (150) + monoMaker (150));
+        b.add (synths, 5, "Synth Lead Bite", "Synth,Lead", hpf (150) + comp (fet, -16, 4, 3, 200, 2) + bell ("hmf", 3000, 2.5f, 1)
                                                              + saturation (8, 70));
-        b.add (synths, 6, "Organ", "Keys,Organ", hpf (50) + comp (opto, -24, 3, 15, 300, 2) + bell ("mf", 800, -1.5f, 1) + saturation (10, 20));
-        b.add (synths, 7, "Pluck Tight", "Synth,Pluck", hpf (100) + gate (-40, 20, fast, 30, 120) + comp (vca, -20, 3, 5, 80, 2));
-        b.add (synths, 8, "Strings Smooth", "Strings", hpf (80) + comp (opto, -24, 2, 30, 500, 2) + bell ("hmf", 3000, -1.5f, 1)
+        b.add (synths, 6, "Organ", "Keys,Organ", hpf (50) + comp (opto, -20, 3, 15, 400, 1) + bell ("mf", 800, -1.5f, 1) + saturation (10, 20));
+        b.add (synths, 7, "Pluck Tight", "Synth,Pluck", hpf (100) + gate (-40, 20, fast, 30, 120) + comp (vca, -16, 3, 5, 150, 1));
+        b.add (synths, 8, "Strings Smooth", "Strings", hpf (80) + comp (opto, -22, 2, 30, 600, 1) + bell ("hmf", 3000, -1.5f, 1)
                                                          + highShelf (12000, 1.5f) + width (120));
     }
 
     // E: vocals and voice
     void addVocals (Builder& b)
     {
-        b.add (vocals, 1, "Clear Lead Vocal", "Vocal,Lead", hpf (90) + comp (vca, -22, 3, 5, 150, 4, true) + bell ("lmf", 300, -2, 0)
+        b.add (vocals, 1, "Clear Lead Vocal", "Vocal,Lead", hpf (90) + comp (vca, -18, 3, 5, 250, 3, true) + bell ("lmf", 300, -2, 0)
                                                               + bell ("hmf", 3000, 2, 1) + highShelf (10000, 3) + saturation (4, 20) + colour (20));
-        b.add (vocals, 2, "Warm Opto Vocal", "Vocal,Lead", hpf (80) + comp (opto, -26, 4, 10, 300, 5) + bell ("mf", 500, -1.5f, 1)
+        b.add (vocals, 2, "Warm Opto Vocal", "Vocal,Lead", hpf (80) + comp (opto, -22, 4, 10, 400, 4) + bell ("mf", 500, -1.5f, 1)
                                                              + highShelf (12000, 2) + saturation (8, 0, 60) + colour (30));
-        b.add (vocals, 3, "Soft Backing Vocal", "Vocal,Backing", hpf (120) + lpf (14000) + comp (vca, -24, soft, 10, 200, 3, true)
+        b.add (vocals, 3, "Soft Backing Vocal", "Vocal,Backing", hpf (120) + lpf (14000) + comp (vca, -20, soft, 10, 300, 2, true)
                                                                    + bell ("hmf", 2500, -2, 0.8f) + width (120));
-        b.add (vocals, 4, "Rap Vocal Tight", "Vocal,Rap", hpf (100) + comp (fet, -20, 6, 2, 80, 4) + bell ("lmf", 220, -2.5f, 0)
+        b.add (vocals, 4, "Rap Vocal Tight", "Vocal,Rap", hpf (100) + comp (fet, -16, 4, 3, 200, 3) + bell ("lmf", 220, -2.5f, 0)
                                                             + bell ("hmf", 4000, 3, 1) + highShelf (12000, 2));
-        b.add (vocals, 5, "Scream Control", "Vocal,Scream", hpf (120) + comp (fet, -26, 8, 1, 100, 5) + sidechain (100, true)
+        b.add (vocals, 5, "Scream Control", "Vocal,Scream", hpf (120) + comp (fet, -18, 6, 1, 300, 3) + sidechain (100, true)
                                                               + bell ("hmf", 3000, -2, 1.5f) + saturation (6, 70));
-        b.add (vocals, 6, "Vocal De-Harsh", "Vocal,Harsh", hpf (90) + comp (vca, -24, 3, 2, 80, 2) + sidechain (100, true)
+        b.add (vocals, 6, "Vocal De-Harsh", "Vocal,Harsh", hpf (90) + comp (vca, -20, 3, 2, 200, 1) + sidechain (100, true)
                                                              + bell ("hmf", 3500, -1.5f, 2));
-        b.add (vocals, 7, "Podcast Voice", "Voice,Podcast", hpf (80) + expander (-50, 2, 12) + comp (opto, -24, 4, 10, 300, 6)
+        b.add (vocals, 7, "Podcast Voice", "Voice,Podcast", hpf (80) + expander (-50, 2, 12) + comp (opto, -20, 4, 10, 400, 4)
                                                               + bell ("lmf", 300, -2, 0) + bell ("hmf", 2500, 2, 1));
-        b.add (vocals, 8, "Vintage Vocal Glow", "Vocal,Vintage", hpf (80) + comp (modern, -24, 6, 10, 200, 5, false, second)
+        b.add (vocals, 8, "Vintage Vocal Glow", "Vocal,Vintage", hpf (80) + comp (modern, -20, 4, 10, 300, 3, false, second)
                                                                    + highShelf (9000, 1.5f) + colour (40));
         b.add (vocals, 9, "Telephone Vocal", "Vocal,Lo-fi", hpf (400) + lpf (3000) + bell ("mf", 1200, 6, 1.5f)
                                                               + saturation (18, 70, 100, true) + width (0));
@@ -205,14 +205,14 @@ namespace
     // F: the mix
     void addMix (Builder& b)
     {
-        b.add (mix, 1, "Mix Bus Console Glue", "Mix,Glue", filtersOnSidechain (25) + comp (vca, -16, 1.5f, 30, 300, 1.5f, true)
+        b.add (mix, 1, "Mix Bus Console Glue", "Mix,Glue", filtersOnSidechain (25) + comp (vca, -14, 1.5f, 30, 400, 1, true)
                                                              + saturation (3, 30, 50) + colour (40) + monoMaker (100) + limiter (-1, 0, softLimit));
-        b.add (mix, 2, "Mix Bus Modern Glue", "Mix,Glue", filtersOnSidechain (60) + comp (modern, -18, 2, 10, 200, 2, false, second));
+        b.add (mix, 2, "Mix Bus Modern Glue", "Mix,Glue", filtersOnSidechain (60) + comp (modern, -16, 2, 10, 300, 1.5f, false, second));
         b.add (mix, 3, "Analog Character", "Mix,Colour", colour (50, 20) + saturation (6, 0, 40));
         b.add (mix, 4, "Mix Bus Wide", "Mix,Stereo", monoMaker (120) + width (125) + highShelf (12000, 1));
-        b.add (mix, 5, "Mix Bus Punch", "Mix,Punch", filtersOnSidechain (80) + comp (fet, -18, 4, 30, 100, 2, true));
+        b.add (mix, 5, "Mix Bus Punch", "Mix,Punch", filtersOnSidechain (80) + comp (fet, -16, 3, 30, 300, 1.5f, true));
         b.add (mix, 6, "Low End Mono", "Mix,Stereo,Low end", monoMaker (150));
-        b.add (mix, 7, "Tape Warmth", "Mix,Colour", comp (modern, -14, 2, 5, 100, 1, false, secondAndThird) + highShelf (14000, -1)
+        b.add (mix, 7, "Tape Warmth", "Mix,Colour", comp (modern, -12, 2, 5, 200, 0.5f, false, secondAndThird) + highShelf (14000, -1)
                                                       + colour (30));
         b.add (mix, 8, "Lo-Fi Telephone", "Mix,Lo-fi", hpf (400) + lpf (3000) + bell ("mf", 1200, 6, 1.5f)
                                                          + saturation (18, 70, 100, true) + width (0));
@@ -221,19 +221,19 @@ namespace
     // G: mastering
     void addMastering (Builder& b)
     {
-        b.add (master, 1, "Master Loud", "Mastering,Loud", comp (vca, -18, soft, 30, 300, 2, true) + limiter (-1, 4, autoLimit)
+        b.add (master, 1, "Master Loud", "Mastering,Loud", comp (vca, -16, soft, 30, 400, 1.5f, true) + limiter (-5, 4, autoLimit)
                                                              + monoMaker (120) + width (110) + colour (20));
-        b.add (master, 2, "Master Gentle Polish", "Mastering", comp (vca, -14, 1.5f, 30, 300, 1, true) + highShelf (14000, 1)
-                                                                 + limiter (-1, 1, softLimit));
-        b.add (master, 3, "Master Transparent Limit", "Mastering,Limiter", limiter (-1, 3, autoLimit));
-        b.add (master, 4, "Master Warm", "Mastering,Colour", comp (opto, -16, 2, 30, 500, 1) + highShelf (12000, -1) + lowShelf (80, 1)
-                                                               + colour (35) + limiter (-1, 2, softLimit));
-        b.add (master, 5, "Master Wide", "Mastering,Stereo", monoMaker (120) + width (120) + limiter (-1, 2, autoLimit));
+        b.add (master, 2, "Master Gentle Polish", "Mastering", comp (vca, -12, 1.5f, 30, 400, 0.5f, true) + highShelf (14000, 1)
+                                                                 + limiter (-2, 1, softLimit));
+        b.add (master, 3, "Master Transparent Limit", "Mastering,Limiter", limiter (-4, 3, autoLimit));
+        b.add (master, 4, "Master Warm", "Mastering,Colour", comp (opto, -14, 2, 30, 600, 0.5f) + highShelf (12000, -1) + lowShelf (80, 1)
+                                                               + colour (35) + limiter (-3, 2, softLimit));
+        b.add (master, 5, "Master Wide", "Mastering,Stereo", monoMaker (120) + width (120) + limiter (-3, 2, autoLimit));
         b.add (master, 6, "Master Low End Control", "Mastering,Low end", filtersOnSidechain (30) + monoMaker (100) + lowShelf (60, -1)
-                                                                           + comp (opto, -16, 2, 30, 300, 1) + limiter (-1, 2, autoLimit));
-        b.add (master, 7, "Master Streaming Safe", "Mastering,Streaming", comp (vca, -16, soft, 30, 300, 1, true) + limiter (-1.5f, 2, brick));
-        b.add (master, 8, "Master Modern Punch", "Mastering,Punch", comp (modern, -16, 2, 20, 150, 1.5f, false, second)
-                                                                      + limiter (-1, 3, autoLimit) + width (110));
+                                                                           + comp (opto, -14, 2, 30, 400, 0.5f) + limiter (-3, 2, autoLimit));
+        b.add (master, 7, "Master Streaming Safe", "Mastering,Streaming", comp (vca, -14, soft, 30, 400, 0.5f, true) + limiter (-3.5f, 2, brick));
+        b.add (master, 8, "Master Modern Punch", "Mastering,Punch", comp (modern, -14, 2, 20, 300, 1, false, second)
+                                                                      + limiter (-4, 3, autoLimit) + width (110));
     }
 
     // A style, in a few traits (0 to 1 unless noted), from which each part
@@ -252,8 +252,8 @@ namespace
     Values styleVocal (const Style& s)
     {
         return hpf (round1 (lerp (80, 120, s.aggression)))
-             + comp (s.vocalCharacter, round1 (lerp (-18, -28, s.aggression)), round1 (lerp (3, 8, s.aggression)), round1 (lerp (8, 2, s.aggression)),
-                     120, round1 (lerp (3, 6, s.aggression)), false, juce::exactlyEqual (s.vocalCharacter, modern) ? (s.harmonics > 50 ? secondAndThird : second) : clean)
+             + comp (s.vocalCharacter, round1 (lerp (-12, -20, s.aggression)), round1 (lerp (3, 4.5f, s.aggression)), round1 (lerp (10, 3, s.aggression)),
+                     350, round1 (lerp (2, 4, s.aggression)), false, juce::exactlyEqual (s.vocalCharacter, modern) ? (s.harmonics > 50 ? secondAndThird : second) : clean)
              + bell ("lmf", 300, -2, 0) + bell ("hmf", 3000, round1 (lerp (0.5f, 3, s.brightness)), 1)
              + highShelf (10000, round1 (lerp (1, 3.5f, s.brightness)))
              + saturation (round1 (lerp (2, 10, s.grit)), s.harmonics, 60)
@@ -263,8 +263,8 @@ namespace
     Values styleDrums (const Style& s)
     {
         return filtersOnSidechain (60)
-             + comp (s.drumCharacter, round1 (lerp (-16, -24, s.aggression)), round1 (lerp (2, 4, s.aggression)), round1 (lerp (30, 10, s.aggression)),
-                     150, round1 (lerp (1, 3, s.aggression)), true, juce::exactlyEqual (s.drumCharacter, modern) ? second : clean)
+             + comp (s.drumCharacter, round1 (lerp (-12, -18, s.aggression)), round1 (lerp (2, 3, s.aggression)), round1 (lerp (30, 15, s.aggression)),
+                     300, round1 (lerp (1, 2, s.aggression)), true, juce::exactlyEqual (s.drumCharacter, modern) ? second : clean)
              + bell ("lf", 60, round1 (lerp (1, 4, s.weight)), 0) + bell ("lmf", 400, round1 (lerp (-1, -4, s.scoop)), 0)
              + bell ("hmf", 4500, round1 (lerp (0.5f, 3, s.brightness)), 1) + highShelf (12000, round1 (lerp (1, 3, s.brightness)))
              + saturation (round1 (lerp (3, 12, s.grit)), s.harmonics, 60);
@@ -273,7 +273,7 @@ namespace
     Values styleGuitars (const Style& s)
     {
         return hpf (round1 (lerp (80, 120, s.aggression))) + lpf (round1 (lerp (9000, 13000, s.brightness)))
-             + comp (vca, -20, round1 (lerp (1.5f, 3, s.aggression)), 15, 150, 1)
+             + comp (vca, -18, round1 (lerp (1.5f, 2.5f, s.aggression)), 15, 250, 1)
              + bell ("mf", 600, round1 (lerp (0, -3, s.scoop)), 1) + bell ("hmf", 2500, round1 (lerp (-1, 1.5f, s.brightness)), 1);
     }
 
@@ -281,27 +281,40 @@ namespace
     {
         const auto character = s.aggression > 0.7f ? modern : opto;
         return hpf (35)
-             + comp (character, round1 (lerp (-20, -26, s.aggression)), 4, 10, 150, round1 (lerp (2, 5, s.aggression)), false,
+             + comp (character, round1 (lerp (-16, -22, s.aggression)), 3, 10, 300, round1 (lerp (1.5f, 3.5f, s.aggression)), false,
                      juce::exactlyEqual (character, modern) ? (s.grit > 0.6f ? secondAndThird : second) : clean)
              + bell ("lf", 80, round1 (lerp (0.5f, 3, s.weight)), 0) + bell ("lmf", 250, -2.5f, 0)
              + bell ("hmf", 1200, round1 (lerp (1, 4, s.aggression)), 1)
              + saturation (round1 (lerp (4, 16, s.grit)), s.harmonics, 70) + monoMaker (150);
     }
 
+    // Synths and keys: in these styles mostly a layer behind the guitars and
+    // vocal (pads, leads, piano, strings), so they're kept out of the low end
+    // and the low mids, held even by a gentle opto, and made the widest part.
+    Values styleSynths (const Style& s)
+    {
+        return hpf (round1 (lerp (90, 180, s.aggression)))
+             + comp (opto, round1 (lerp (-16, -22, s.aggression)), round1 (lerp (2, 3, s.aggression)), 20, 400, round1 (lerp (1, 2, s.aggression)))
+             + bell ("lmf", 350, round1 (lerp (-1, -3, s.weight)), 0) + bell ("hmf", 2500, round1 (lerp (-1, 2, s.brightness)), 1)
+             + highShelf (10000, round1 (lerp (0, 2.5f, s.brightness)))
+             + saturation (round1 (lerp (2, 10, s.grit)), s.harmonics, 50)
+             + width (round1 (lerp (110, 160, juce::jlimit (0.0f, 1.0f, (s.widthPercent - 100) / 30)))) + monoMaker (150);
+    }
+
     Values styleMix (const Style& s)
     {
         return filtersOnSidechain (60)
-             + comp (modern, round1 (lerp (-14, -20, s.aggression)), round1 (lerp (1.5f, 2.5f, s.aggression)), 20, 200,
-                     round1 (lerp (1, 2.5f, s.aggression)), false, s.grit > 0.6f ? second : clean)
+             + comp (modern, round1 (lerp (-12, -16, s.aggression)), round1 (lerp (1.5f, 2, s.aggression)), 20, 300,
+                     round1 (lerp (0.5f, 1.5f, s.aggression)), false, s.grit > 0.6f ? second : clean)
              + saturation (round1 (lerp (2, 6, s.grit)), s.harmonics, 40) + colour (round1 (lerp (15, 45, s.grit)))
              + monoMaker (100) + width (round1 (lerp (100, s.widthPercent, 0.5f)));
     }
 
     Values styleMaster (const Style& s)
     {
-        return comp (vca, -16, soft, 30, 300, 1, true)
+        return comp (vca, -14, soft, 30, 400, 0.5f, true)
              + highShelf (14000, round1 (lerp (0, 1.5f, s.brightness))) + lowShelf (60, round1 (lerp (0, 1.5f, s.weight)))
-             + limiter (-1, round1 (lerp (2, 6, s.loudness)), autoLimit) + monoMaker (120) + width (s.widthPercent);
+             + limiter (round1 (-1 - lerp (1.5f, 4, s.loudness)), round1 (lerp (1.5f, 4, s.loudness)), autoLimit) + monoMaker (120) + width (s.widthPercent);
     }
 
     // One preset per part of a song, at the same number in each bank.
@@ -313,6 +326,7 @@ namespace
         b.add (drums, number, name + " Drums", tags + ",Drums", styleDrums (s), set);
         b.add (guitars, number, name + " Guitars", tags + ",Guitar", styleGuitars (s), set);
         b.add (bass, number, name + " Bass", tags + ",Bass", styleBass (s), set);
+        b.add (synths, number, name + " Synths", tags + ",Synth,Keys", styleSynths (s), set);
         b.add (mix, number, name + " Mix", tags + ",Mix", styleMix (s), set);
         b.add (master, number, name + " Master", tags + ",Mastering", styleMaster (s), set);
     }

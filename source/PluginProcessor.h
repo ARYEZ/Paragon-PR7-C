@@ -42,6 +42,12 @@ public:
     bool isMidiEffect() const override { return false; }
     double getTailLengthSeconds() const override { return 0.0; }
 
+    // The delay the strip reports to the host, the same whatever is on: the
+    // saturation's and THD's oversampling filters shift the sound by a few
+    // samples, so while they're off the sound is delayed as much instead.
+    // About 0.15 ms at 48 kHz; the host lines the tracks up by it.
+    static constexpr int latencySamples = effects::Saturation::latencySamples + effects::ConsoleColour::latencySamples;
+
     int getNumPrograms() override { return 1; }
     int getCurrentProgram() override { return 0; }
     void setCurrentProgram (int) override {}
@@ -136,6 +142,7 @@ private:
     effects::CutFilters scFilter;
     effects::EqBand scEdge { effects::EqBand::Shelf::none };   // EDGE: a boost round 6 kHz in the detector
     juce::SmoothedValue<float> listen { 0.0f };
+    effects::FixedDelay listenDelay;   // LISTEN's signal, delayed as much as the audio (`latencySamples`)
     struct CompParameters { std::atomic<float>* on, * threshold, * ratio, * attack, * release, * autoRelease, * makeUp, * character, * link, * distortion; };
     CompParameters compParameters {};
     effects::Compressor compressor;

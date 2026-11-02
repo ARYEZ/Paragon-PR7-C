@@ -24,9 +24,11 @@ namespace effects
     //
     // THD's curve is a smooth polynomial (x, x², x³) run at twice the sample
     // rate, which is enough that its harmonics never fold back down as
-    // aliasing. While THD is on, that shifts the sound by a few samples;
-    // while it's off, the audio is untouched (the filters keep running on a
-    // copy, so switching on doesn't ring).
+    // aliasing. The 2x filters delay the sound by about 3.1 samples, so
+    // while THD is off the audio is delayed by 3 whole samples
+    // (`latencySamples`) instead: on or off, the plugin's delay stays the
+    // same. Switched on, the filters are first warmed up on the last
+    // moments of the audio (`RecentInput`), so they don't ring.
     class ConsoleColour
     {
     public:
@@ -46,6 +48,9 @@ namespace effects
         // THD's curve at full amount, for one sample.
         static constexpr float secondAtFull = 0.06f, thirdAtFull = 0.04f;
         static constexpr float hissDbAtFull = -64.0f, humDbAtFull = -72.0f;
+        // The 2x filters' delay (3.14 samples at any sample rate), rounded.
+        // A test checks it against the filters.
+        static constexpr int latencySamples = 3;
 
     private:
         void addNoise (juce::AudioBuffer<float>&, int numSamples, const Settings&) noexcept;
@@ -57,7 +62,10 @@ namespace effects
         std::array<juce::SmoothedValue<float>, 2> second, third, hiss, hum;
         std::array<float, 2> dcIn {}, dcOut {};   // x² leaves a DC offset: removed below 5 Hz
         float dcCoefficient = 0.9995f;
+        RecentInput recentInput;   // to warm the filters up with when THD is switched on
         juce::AudioBuffer<float> warmUp;
+        FixedDelay dryDelay;   // the input, delayed as much as the filters delay it
+        juce::AudioBuffer<float> delayed;
         std::array<std::uint32_t, 2> random { 0x12345678u, 0x9abcdef1u };   // each side's hiss
         double humPhase = 0.0;
     };
