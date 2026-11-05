@@ -2,6 +2,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
 #include "PluginEditor.h"
+#include "ui/Finish.h"
 #include "PluginProcessor.h"
 
 using Catch::Matchers::WithinAbs;
@@ -320,4 +321,18 @@ TEST_CASE ("Every control has a tooltip, and none says it isn't built yet", "[ui
         CHECK (tooltip.isNotEmpty());
         CHECK (! tooltip.contains ("Not working yet"));
     }
+}
+
+TEST_CASE ("The neon finishes put the neon in the rings round black keys and knobs", "[ui]")
+{
+    // PR7-G's 0.59.0 look: pearl black and pearl white + neon have neon
+    // rings; pearl white keeps its dark key edges and orange knob rings.
+    const auto before = Finish::get();
+    Finish::set (Finish::Type::pearlWhiteNeon, false);
+    CHECK (Finish::neonRings());
+    Finish::set (Finish::Type::pearlBlack, false);
+    CHECK (Finish::neonRings());
+    Finish::set (Finish::Type::pearlWhite, false);
+    CHECK_FALSE (Finish::neonRings());
+    Finish::set (before, false);
 }

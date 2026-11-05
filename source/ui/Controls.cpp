@@ -124,6 +124,24 @@ void Knob::drawKnob (juce::Graphics& g, juce::Point<float> c, float ringRadius, 
     const auto grooveRadius = r * 0.86f;
     const auto circle = [&] (float radius) { return juce::Rectangle<float> (radius * 2.0f, radius * 2.0f).withCentre (c); };
 
+    // The ring's light: the concept's orange on pearl white; on pearl black
+    // and white + neon, the neon's pink to red to orange across the ring,
+    // brightened as it's a light (the keys' rings are metal). Brightened at
+    // full colour: JUCE's brighter() mixes towards white, which on this wide,
+    // soft ring washed the neon out to pastel. `brighter` lifts it further,
+    // for the white-hot core.
+    const auto neonRing = Finish::neonRings();
+    auto ringGradient = Finish::neonGradient (c.x - grooveRadius, c.x + grooveRadius);
+    for (int i = 0; i < ringGradient.getNumColours(); ++i)
+        ringGradient.setColour (i, ringGradient.getColour (i).withMultipliedBrightness (1.6f));
+    const auto ringColourAt = [&] (float x, float brighter = 0.0f)
+    {
+        if (! neonRing)
+            return brighter > 0.0f ? ringCore : ringNeon;
+        const auto position = juce::jlimit (0.0, 1.0, (double) (x - (c.x - grooveRadius)) / (double) (grooveRadius * 2.0f));
+        return ringGradient.getColourAtPosition (position).brighter (brighter);
+    };
+
     // The knob's shadow on the panel, and the ring's light spilling onto it
     // where the ring ends, either side of the opening.
     {
@@ -133,7 +151,8 @@ void Knob::drawKnob (juce::Graphics& g, juce::Point<float> c, float ringRadius, 
         for (auto end : { travelStart, travelEnd })
         {
             const auto spot = onCircle (c, r * 0.9f, end);
-            g.setGradientFill (juce::ColourGradient (ringNeon.withAlpha (0.4f), spot, ringNeon.withAlpha (0.0f), spot.translated (r * 0.5f, 0.0f), true));
+            const auto light = ringColourAt (spot.x);
+            g.setGradientFill (juce::ColourGradient (light.withAlpha (0.4f), spot, light.withAlpha (0.0f), spot.translated (r * 0.5f, 0.0f), true));
             g.fillEllipse (juce::Rectangle<float> (r, r).withCentre (spot));
         }
     }
@@ -150,46 +169,47 @@ void Knob::drawKnob (juce::Graphics& g, juce::Point<float> c, float ringRadius, 
         g.drawEllipse (circle (grooveRadius), r * 0.14f);
         juce::Path arc;
         arc.addCentredArc (c.x, c.y, grooveRadius, grooveRadius, 0.0f, travelStart, travelEnd, true);
-        const auto stroke = [&] (juce::Colour colour, float width)
+        // A layer of the ring: the neon's colour (or, on the neon finishes,
+        // the gradient across it), at `alpha`, `brighter` towards white.
+        const auto stroke = [&] (float alpha, float width, float brighter = 0.0f)
         {
-            g.setColour (colour);
+            if (neonRing)
+            {
+                auto gradient = ringGradient;
+                for (int i = 0; i < gradient.getNumColours(); ++i)
+                    gradient.setColour (i, gradient.getColour (i).brighter (brighter).withAlpha (alpha));
+                g.setGradientFill (gradient);
+            }
+            else
+            {
+                g.setColour ((brighter > 0.0f ? ringCore : ringNeon).withAlpha (alpha));
+            }
             g.strokePath (arc, juce::PathStrokeType (width, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
         };
-        stroke (ringNeon.withAlpha (0.22f), r * 0.22f);
-        stroke (ringNeon.withAlpha (0.55f), r * 0.11f);
-        stroke (ringNeon, r * 0.06f);
-        stroke (ringCore, r * 0.022f);
+        stroke (0.22f, r * 0.22f);
+        stroke (0.55f, r * 0.11f);
+        stroke (1.0f, r * 0.06f);
+        stroke (1.0f, r * 0.022f, 0.6f);   // the white-hot core
 
         // Hot spots where the ring ends, as on the concept.
         for (auto end : { travelStart, travelEnd })
         {
             const auto spot = onCircle (c, grooveRadius, end);
-            g.setColour (ringCore.withAlpha (0.8f));
+            g.setColour (ringColourAt (spot.x, 0.6f).withAlpha (0.8f));
             g.fillEllipse (juce::Rectangle<float> (r * 0.09f, r * 0.09f).withCentre (spot));
         }
     }
 
-    // The cap: glossy black (or the neon finish's colours), slightly domed,
+    // The cap: glossy black (on every finish), slightly domed,
     // with fine machining rings and a soft reflection at the top left.
     const auto cap = circle (capRadius);
     {
         juce::DropShadow (juce::Colours::black.withAlpha (0.8f), juce::roundToInt (r * 0.12f), { 0, juce::roundToInt (r * 0.05f) })
             .drawForRectangle (g, cap.reduced (capRadius * 0.15f).toNearestInt());
 
-        if (Finish::neonKeys())
-        {
-            g.setGradientFill (Finish::neonGradient (cap.getX(), cap.getRight()));
-            g.fillEllipse (cap);
-            g.setGradientFill (juce::ColourGradient (juce::Colours::white.withAlpha (0.2f), c.x, cap.getY(),
-                                                     juce::Colours::black.withAlpha (0.45f), c.x, cap.getBottom(), false));
-            g.fillEllipse (cap);
-        }
-        else
-        {
-            g.setGradientFill (juce::ColourGradient (juce::Colour (0xff35343a), cap.getX(), cap.getY(),
-                                                     juce::Colour (0xff050506), cap.getRight(), cap.getBottom(), false));
-            g.fillEllipse (cap);
-        }
+        g.setGradientFill (juce::ColourGradient (juce::Colour (0xff35343a), cap.getX(), cap.getY(),
+                                                 juce::Colour (0xff050506), cap.getRight(), cap.getBottom(), false));
+        g.fillEllipse (cap);
 
         g.setColour (juce::Colours::white.withAlpha (0.018f));
         for (int ring = 2; ring <= 9; ++ring)

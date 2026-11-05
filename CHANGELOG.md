@@ -2,6 +2,15 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.4.7
+
+**A new look for Pearl Black and Pearl White + Neon: black keys and knobs in neon rings** (your design, from PR7-G 0.59.0). The sound is unchanged from 0.4.6.
+
+- On Pearl Black and Pearl White + Neon every key and knob is now black, as on Pearl White, and the pink-to-red-to-orange neon moves to the rings round them: each key's edge, and each knob's ring of light (pink at its left end through orange at its right).
+- The fader cap is chrome on every finish, as on Pearl White (it was a neon key on these two finishes).
+- Lit keys glow orange on every finish (on the neon keys they were pale gold).
+- Pearl White hasn't changed at all.
+
 ## 0.4.6
 
 **Gentler compression in the presets, and the mastering presets no longer clip.** The controls and the modules themselves are unchanged from 0.4.5.

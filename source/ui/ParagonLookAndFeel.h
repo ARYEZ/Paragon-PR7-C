@@ -137,10 +137,10 @@ public:
     // The mockup's piano-black keys (footswitches, slot blocks, small
     // buttons): a glossy black top set in chamfered edges, the top bevel
     // catching the light, the side bevels reflecting the red glow, and a
-    // soft shadow on the metal. `bevel` is the chamfer's width. `neon`
-    // draws it pink to red to orange (the pearl black unit's keys).
+    // soft shadow on the metal. `bevel` is the chamfer's width. Black on
+    // every finish (the neon finishes put the neon in the rings round them).
     static void drawPianoKey (juce::Graphics&, juce::Rectangle<float> area, float radius, float bevel,
-                              bool pressed, bool highlighted, bool neon = false);
+                              bool pressed, bool highlighted);
 
     // A console button's icon (see iconProperty), in `colour`.
     static void drawIcon (juce::Graphics&, const juce::String& icon, juce::Rectangle<float> area, juce::Colour colour, bool on);
