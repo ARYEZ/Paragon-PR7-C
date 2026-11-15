@@ -2,14 +2,14 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 
-// The unit's finish: pearl white, pearl black, or pearl white + neon. The
-// keys and knobs are black on every finish (the fader's cap chrome); on
-// pearl black and pearl white + neon the rings round them (the keys' edges,
-// the knobs' rings of light) carry the neon (pink to red to orange); on pearl
-// white the keys have a dark edge and the knobs' rings glow orange. Only the
-// unit itself changes (its chassis, the lettering printed on it, its rings);
-// the screens, the meters and the dark panels round it stay as they are.
-// (PR7-G's 0.59.0 look, the owner's design.)
+// The unit's finish: Obsidian (a pearl black unit, the default) or Aurora
+// (pearl white). On both the keys and knobs are black (the fader's cap
+// chrome), in neon rings (pink to red to orange): the keys' edges and the
+// knobs' rings of light. Only the unit itself changes (its module plates and
+// the lettering printed on them); the screens, the meters and the dark panels
+// round it stay as they are. (0.4.7 and before also had Pearl White, with
+// dark key edges and orange knob rings: retired. The family's decision, from
+// PR7-G 0.60.0 and PR7-B 0.24.0.)
 //
 // It's a preference of the person, not part of a project or a rig: kept in a
 // small settings file in the user's application data folder, so every
@@ -17,15 +17,18 @@
 // window repaints when it changes.
 namespace Finish
 {
-    // Saved by number: only ever add to the end.
-    enum class Type { pearlWhite, pearlBlack, pearlWhiteNeon };
-    inline const juce::StringArray names { "Pearl White", "Pearl Black", "Pearl White + Neon" };
+    // Saved by number: only ever add to the end. retiredPearlWhite (0) is
+    // only ever read from an old settings file, and opens as Obsidian; the
+    // old Pearl Black (1) is Obsidian, the old Pearl White + Neon (2) Aurora.
+    enum class Type { retiredPearlWhite, obsidian, aurora };
+    // The finishes offered, in the order they're shown, and their names.
+    inline constexpr Type choices[] { Type::obsidian, Type::aurora };
+    inline juce::String nameOf (Type type) { return type == Type::aurora ? "AURORA" : "OBSIDIAN"; }
 
     Type get();
     // `remember` saves it to the settings file (off for tests and snapshots).
     void set (Type, bool remember = true);
-    inline bool isBlack() { return get() == Type::pearlBlack; }          // the chassis colour
-    inline bool neonRings() { return get() != Type::pearlWhite; }        // the rings round keys and knobs
+    inline bool isBlack() { return get() != Type::aurora; }              // the chassis colour
 
     // Told whenever the finish changes, to repaint.
     juce::ChangeBroadcaster& changes();
@@ -45,6 +48,20 @@ namespace Finish
     // at the right (the reference swatch's colours, 25% darker), across
     // `left` to `right`. Lighting is drawn over it.
     juce::ColourGradient neonGradient (float left, float right);
+
+    // AURORA's pearl is darkened by this much (the owner: full white was "too
+    // bright, almost disorienting", in PR7-B; the family's choice since): every
+    // pixel of the pearl surfaces, their sheen and highlights included, is
+    // drawn at 90% of its old value, so pure white becomes 230/255. The
+    // lettering, the neon, the keys, knobs, meters and screens on it keep
+    // their own colours.
+    inline constexpr float auroraDimming = 0.10f;
+
+    // Darkens a pearl surface just drawn, inside `area`, by auroraDimming on
+    // Aurora (black laid over it: each colour times 1 - auroraDimming); nothing on Obsidian.
+    void dimPearl (juce::Graphics&, const juce::Path& area);
+    // A colour of Aurora's pearl as drawn (times 1 - auroraDimming); unchanged on Obsidian.
+    juce::Colour pearl (juce::Colour);
 
     // Picks the colour for the current finish.
     inline juce::Colour pick (juce::uint32 onWhite, juce::uint32 onBlack) { return juce::Colour (isBlack() ? onBlack : onWhite); }

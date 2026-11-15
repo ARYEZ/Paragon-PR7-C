@@ -5,9 +5,8 @@
 
 namespace
 {
-    // The concept's orange-red ring light, and its white-hot core.
+    // The concept's orange-red ring light (the fader's glowing ball).
     const juce::Colour ringNeon { 0xffff4a1e };
-    const juce::Colour ringCore { 0xffffc79a };
 
     // The meter window's dark glass, which the meters fill behind themselves.
     const juce::Colour meterGlass { 0xff050405 };
@@ -124,20 +123,16 @@ void Knob::drawKnob (juce::Graphics& g, juce::Point<float> c, float ringRadius, 
     const auto grooveRadius = r * 0.86f;
     const auto circle = [&] (float radius) { return juce::Rectangle<float> (radius * 2.0f, radius * 2.0f).withCentre (c); };
 
-    // The ring's light: the concept's orange on pearl white; on pearl black
-    // and white + neon, the neon's pink to red to orange across the ring,
+    // The ring's light: the neon's pink to red to orange across the ring,
     // brightened as it's a light (the keys' rings are metal). Brightened at
     // full colour: JUCE's brighter() mixes towards white, which on this wide,
     // soft ring washed the neon out to pastel. `brighter` lifts it further,
     // for the white-hot core.
-    const auto neonRing = Finish::neonRings();
     auto ringGradient = Finish::neonGradient (c.x - grooveRadius, c.x + grooveRadius);
     for (int i = 0; i < ringGradient.getNumColours(); ++i)
         ringGradient.setColour (i, ringGradient.getColour (i).withMultipliedBrightness (1.6f));
     const auto ringColourAt = [&] (float x, float brighter = 0.0f)
     {
-        if (! neonRing)
-            return brighter > 0.0f ? ringCore : ringNeon;
         const auto position = juce::jlimit (0.0, 1.0, (double) (x - (c.x - grooveRadius)) / (double) (grooveRadius * 2.0f));
         return ringGradient.getColourAtPosition (position).brighter (brighter);
     };
@@ -169,21 +164,14 @@ void Knob::drawKnob (juce::Graphics& g, juce::Point<float> c, float ringRadius, 
         g.drawEllipse (circle (grooveRadius), r * 0.14f);
         juce::Path arc;
         arc.addCentredArc (c.x, c.y, grooveRadius, grooveRadius, 0.0f, travelStart, travelEnd, true);
-        // A layer of the ring: the neon's colour (or, on the neon finishes,
-        // the gradient across it), at `alpha`, `brighter` towards white.
+        // A layer of the ring: the neon's gradient across it, at `alpha`,
+        // `brighter` towards white.
         const auto stroke = [&] (float alpha, float width, float brighter = 0.0f)
         {
-            if (neonRing)
-            {
-                auto gradient = ringGradient;
-                for (int i = 0; i < gradient.getNumColours(); ++i)
-                    gradient.setColour (i, gradient.getColour (i).brighter (brighter).withAlpha (alpha));
-                g.setGradientFill (gradient);
-            }
-            else
-            {
-                g.setColour ((brighter > 0.0f ? ringCore : ringNeon).withAlpha (alpha));
-            }
+            auto gradient = ringGradient;
+            for (int i = 0; i < gradient.getNumColours(); ++i)
+                gradient.setColour (i, gradient.getColour (i).brighter (brighter).withAlpha (alpha));
+            g.setGradientFill (gradient);
             g.strokePath (arc, juce::PathStrokeType (width, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
         };
         stroke (0.22f, r * 0.22f);

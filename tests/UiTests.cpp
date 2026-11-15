@@ -323,16 +323,83 @@ TEST_CASE ("Every control has a tooltip, and none says it isn't built yet", "[ui
     }
 }
 
-TEST_CASE ("The neon finishes put the neon in the rings round black keys and knobs", "[ui]")
+TEST_CASE ("OBSIDIAN and AURORA are the two finishes; Obsidian is the default", "[ui]")
 {
-    // PR7-G's 0.59.0 look: pearl black and pearl white + neon have neon
-    // rings; pearl white keeps its dark key edges and orange knob rings.
+    // The family's decision (PR7-G 0.60.0, PR7-B 0.24.0): Pearl White is
+    // retired, Pearl Black is OBSIDIAN, Pearl White + Neon is AURORA, with
+    // their saved numbers kept.
     const auto before = Finish::get();
-    Finish::set (Finish::Type::pearlWhiteNeon, false);
-    CHECK (Finish::neonRings());
-    Finish::set (Finish::Type::pearlBlack, false);
-    CHECK (Finish::neonRings());
-    Finish::set (Finish::Type::pearlWhite, false);
-    CHECK_FALSE (Finish::neonRings());
+    CHECK ((int) Finish::Type::retiredPearlWhite == 0);
+    CHECK ((int) Finish::Type::obsidian == 1);
+    CHECK ((int) Finish::Type::aurora == 2);
+    CHECK (std::size (Finish::choices) == 2);
+    CHECK (Finish::nameOf (Finish::choices[0]) == "OBSIDIAN");
+    CHECK (Finish::nameOf (Finish::choices[1]) == "AURORA");
+
+    Finish::set (Finish::Type::aurora, false);
+    CHECK (Finish::get() == Finish::Type::aurora);
+    CHECK_FALSE (Finish::isBlack());
+    Finish::set (Finish::Type::retiredPearlWhite, false);   // an old saved Pearl White opens as Obsidian
+    CHECK (Finish::get() == Finish::Type::obsidian);
+    CHECK (Finish::isBlack());
+    Finish::set (before, false);
+}
+
+TEST_CASE ("AURORA's pearl is 10% less bright; OBSIDIAN is unchanged", "[ui]")
+{
+    // The module plates drawn with and without the dimming: on Aurora every
+    // pixel of the pearl comes out at 90% (to within rounding), so pure white
+    // is about 230; on Obsidian the two are identical.
+    const auto before = Finish::get();
+    const auto draw = [] (bool dim)
+    {
+        juce::Image image (juce::Image::ARGB, MainView::width, MainView::height, true, juce::SoftwareImageType());
+        juce::Graphics g (image);
+        g.fillAll (juce::Colours::black);
+        const auto grain = Finish::makeSatinGrain (MainView::width, MainView::height, 7);
+        MainView::paintPlates (g, grain, dim);
+        return image;
+    };
+    const auto brightness = [] (juce::Colour c) { return juce::jmax (c.getRed(), c.getGreen(), c.getBlue()); };
+
+    Finish::set (Finish::Type::aurora, false);
+    const auto bright = draw (false), dimmed = draw (true);
+    int worst = 0, brightest = 0, checked = 0;
+    for (const auto& module : MainView::modules())
+    {
+        juce::Path inside;   // the plate, 2 px in from its edge (outside it is its shadow, which isn't pearl)
+        inside.addRoundedRectangle (module.bounds.reduced (2.0f), 6.0f);
+        const auto box = module.bounds.toNearestInt();
+        for (int y = box.getY(); y < box.getBottom(); ++y)
+            for (int x = box.getX(); x < box.getRight(); ++x)
+            {
+                if (! inside.contains ((float) x + 0.5f, (float) y + 0.5f))
+                    continue;
+                const auto b = bright.getPixelAt (x, y), a = dimmed.getPixelAt (x, y);
+                for (const auto [from, to] : { std::pair { b.getRed(), a.getRed() }, { b.getGreen(), a.getGreen() }, { b.getBlue(), a.getBlue() } })
+                {
+                    worst = juce::jmax (worst, std::abs ((int) to - juce::roundToInt ((1.0f - Finish::auroraDimming) * (float) from)));
+                }
+                brightest = juce::jmax (brightest, (int) brightness (a));
+                ++checked;
+            }
+    }
+    CHECK (checked > 100000);
+    CHECK (worst <= 1);
+    CHECK (Finish::auroraDimming == 0.10f);
+    CHECK (brightest <= 231);
+    CHECK (brightest >= 215);   // still a white unit, not grey: the brightest pearl near 230
+    CHECK (Finish::pearl (juce::Colours::white) == juce::Colour (230, 230, 230));
+    CHECK (Finish::stampEdge() == juce::Colour (230, 230, 230).withAlpha (0.7f));
+
+    Finish::set (Finish::Type::obsidian, false);
+    const auto blackPlain = draw (false), blackDimmed = draw (true);
+    int blackDifference = 0;
+    for (int y = 0; y < MainView::height; ++y)
+        for (int x = 0; x < MainView::width; ++x)
+            if (blackPlain.getPixelAt (x, y) != blackDimmed.getPixelAt (x, y))
+                ++blackDifference;
+    CHECK (blackDifference == 0);
+    CHECK (Finish::pearl (juce::Colours::white) == juce::Colours::white);
     Finish::set (before, false);
 }

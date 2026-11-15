@@ -24,17 +24,19 @@ namespace Finish
             {
                 // Read once, the first time anything is drawn.
                 juce::PropertiesFile file (settingsOptions());
-                const auto saved = file.getIntValue (settingKey, 0);
-                type = saved == (int) Type::pearlBlack || saved == (int) Type::pearlWhiteNeon ? (Type) saved : Type::pearlWhite;
+                // Aurora if chosen (the old Pearl White + Neon); otherwise
+                // (nothing saved yet, the old Pearl Black, or the retired
+                // Pearl White) Obsidian, the default.
+                type = file.getIntValue (settingKey, (int) Type::obsidian) == (int) Type::aurora ? Type::aurora : Type::obsidian;
             }
 
-            Type type = Type::pearlWhite;
+            Type type = Type::obsidian;
             juce::ChangeBroadcaster broadcaster;
         };
 
         State& state()
         {
-            // Shared by every PR7-G window open in the DAW (they're in one
+            // Shared by every PR7-C window open in the DAW (they're in one
             // process), and only touched on the message thread.
             static State instance;
             return instance;
@@ -45,6 +47,9 @@ namespace Finish
 
     void set (Type type, bool remember)
     {
+        if (type != Type::aurora)
+            type = Type::obsidian;   // the retired Pearl White opens as Obsidian
+
         if (remember)
         {
             juce::PropertiesFile file (settingsOptions());
@@ -62,7 +67,23 @@ namespace Finish
 
     juce::Colour ink() { return isBlack() ? juce::Colour (0xfff1eaee) : ParagonColours::ink; }
     juce::Colour inkDim() { return isBlack() ? juce::Colour (0xff9a8f96) : ParagonColours::inkDim; }
-    juce::Colour stampEdge() { return isBlack() ? juce::Colours::black.withAlpha (0.75f) : juce::Colours::white.withAlpha (0.7f); }
+    juce::Colour stampEdge() { return isBlack() ? juce::Colours::black.withAlpha (0.75f) : pearl (juce::Colours::white).withAlpha (0.7f); }
+
+    void dimPearl (juce::Graphics& g, const juce::Path& area)
+    {
+        if (isBlack())
+            return;
+        g.setColour (juce::Colours::black.withAlpha (auroraDimming));
+        g.fillPath (area);
+    }
+
+    juce::Colour pearl (juce::Colour colour)
+    {
+        if (isBlack())
+            return colour;
+        const auto scale = [] (juce::uint8 c) { return (juce::uint8) juce::roundToInt ((float) c * (1.0f - auroraDimming)); };
+        return juce::Colour (scale (colour.getRed()), scale (colour.getGreen()), scale (colour.getBlue()), colour.getAlpha());
+    }
     juce::Colour printedRed() { return isBlack() ? ParagonColours::glow.brighter (0.15f) : ParagonColours::glow.darker (0.15f); }
 
     juce::ColourGradient neonGradient (float left, float right)

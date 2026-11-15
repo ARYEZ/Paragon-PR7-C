@@ -35,6 +35,11 @@ public:
     };
     static const std::vector<Module>& modules();
 
+    // The modules' pearl plates, with `grain` (the satin) over them. `dim`:
+    // Aurora's pearl 10% less bright (Finish::auroraDimming), as the window
+    // draws it; off only for tests, to compare.
+    static void paintPlates (juce::Graphics&, const juce::Image& grain, bool dim = true);
+
     // Every control, by ID: "<module>.<control>" ("comp.ratio", "hf.on").
     // Knobs are Knob, lamps Led, switches LeverSwitch, the rest TextButton.
     juce::Component* findControl (const juce::String& id) const;

@@ -87,7 +87,7 @@ namespace
     void drawScrew (juce::Graphics& g, juce::Point<float> c)
     {
         const auto circle = [&] (float radius) { return juce::Rectangle<float> (radius * 2.0f, radius * 2.0f).withCentre (c); };
-        g.setGradientFill (juce::ColourGradient (juce::Colours::black.withAlpha (0.5f), c.x, c.y - 7.0f, juce::Colours::white.withAlpha (0.5f), c.x, c.y + 7.0f, false));
+        g.setGradientFill (juce::ColourGradient (juce::Colours::black.withAlpha (0.5f), c.x, c.y - 7.0f, Finish::pearl (juce::Colours::white).withAlpha (0.5f), c.x, c.y + 7.0f, false));
         g.fillEllipse (circle (7.0f));
         juce::ColourGradient dome (juce::Colour (0xff57555a), c.translated (-1.5f, -2.0f), juce::Colour (0xff050506), c.translated (4.0f, 3.0f), true);
         g.setGradientFill (dome);
@@ -101,7 +101,7 @@ namespace
     {
         g.setColour (juce::Colour (0xff111013));
         g.fillRoundedRectangle (tray, 6.0f);
-        g.setColour (juce::Colours::white.withAlpha (Finish::isBlack() ? 0.1f : 0.7f));
+        g.setColour (Finish::pearl (juce::Colours::white).withAlpha (Finish::isBlack() ? 0.1f : 0.7f));   // the pearl catching the light under its edge
         g.drawRoundedRectangle (tray.translated (0.0f, 1.0f), 6.0f, 1.0f);
         g.setColour (juce::Colours::black);
         g.drawRoundedRectangle (tray, 6.0f, 1.0f);
@@ -892,9 +892,8 @@ void MainView::showSettingsMenu()
 {
     juce::PopupMenu menu;
     menu.addSectionHeader ("Finish");
-    // In the order they're best read, not the order they're saved in.
-    for (const auto type : { Finish::Type::pearlWhite, Finish::Type::pearlWhiteNeon, Finish::Type::pearlBlack })
-        menu.addItem (Finish::names[(int) type], true, Finish::get() == type, [type] { Finish::set (type); });
+    for (const auto type : Finish::choices)
+        menu.addItem (Finish::nameOf (type), true, Finish::get() == type, [type] { Finish::set (type); });
 
     auto* settings = findControl ("settings");
     menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (settings));
@@ -904,6 +903,27 @@ void MainView::changeListenerCallback (juce::ChangeBroadcaster*)
 {
     grain = Finish::makeSatinGrain (width, height, 7);
     repaint();
+}
+
+void MainView::paintPlates (juce::Graphics& g, const juce::Image& grain, bool dim)
+{
+    juce::Path plates;
+    for (const auto& module : modules())
+    {
+        drawPlate (g, module.bounds, hasHeader (module.name));
+        plates.addRoundedRectangle (module.bounds, 8.0f);
+    }
+    {
+        juce::Graphics::ScopedSaveState state (g);
+        g.reduceClipRegion (plates);
+        g.drawImageAt (grain, 0, 0);
+    }
+    // Aurora's pearl, all of it (the plates, their bevels, insets and grain),
+    // 10% less bright (Finish::auroraDimming), in one go so nothing is darkened
+    // twice; the screws, trays, windows and lettering go on after, in their
+    // own colours. Nothing on Obsidian.
+    if (dim)
+        Finish::dimPearl (g, plates);
 }
 
 void MainView::paint (juce::Graphics& g)
@@ -945,17 +965,7 @@ void MainView::paint (juce::Graphics& g)
     }
 
     // The modules' plates, the satin grain over them, and their screws.
-    juce::Path plates;
-    for (const auto& module : modules())
-    {
-        drawPlate (g, module.bounds, hasHeader (module.name));
-        plates.addRoundedRectangle (module.bounds, 8.0f);
-    }
-    {
-        juce::Graphics::ScopedSaveState state (g);
-        g.reduceClipRegion (plates);
-        g.drawImageAt (grain, 0, 0);
-    }
+    paintPlates (g, grain);
     for (const auto& module : modules())
     {
         const auto inner = module.bounds.reduced (14.0f);
@@ -1013,7 +1023,7 @@ void MainView::paint (juce::Graphics& g)
         const juce::Rectangle<float> window { 351.0f, 447.0f, 271.0f, 47.0f };
         g.setColour (juce::Colour (0xff050405));
         g.fillRoundedRectangle (window, 5.0f);
-        g.setColour (juce::Colours::white.withAlpha (Finish::isBlack() ? 0.1f : 0.7f));
+        g.setColour (Finish::pearl (juce::Colours::white).withAlpha (Finish::isBlack() ? 0.1f : 0.7f));   // the pearl catching the light under its edge
         g.drawRoundedRectangle (window.translated (0.0f, 1.0f), 5.0f, 1.0f);
         g.setColour (juce::Colours::black);
         g.drawRoundedRectangle (window, 5.0f, 1.0f);

@@ -100,22 +100,16 @@ void ParagonLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button& 
             }
             return;
         }
-        if (Finish::neonRings())
         {
-            // Pearl black and white + neon: the key's edge is a ring of the
-            // neon, pink to red to orange across, shaded as a recess (darker
-            // under the top, lit along the lower lip).
+            // The key's edge is a ring of the neon, pink to red to orange
+            // across, shaded as a recess (darker under the top, lit along the
+            // lower lip).
             const auto ring = area.expanded (1.4f);
             g.setGradientFill (Finish::neonGradient (ring.getX(), ring.getRight()));
             g.fillRoundedRectangle (ring, 5.8f);
             g.setGradientFill (juce::ColourGradient (juce::Colours::black.withAlpha (0.3f), 0.0f, ring.getY(),
                                                      juce::Colours::white.withAlpha (0.25f), 0.0f, ring.getBottom(), false));
             g.fillRoundedRectangle (ring, 5.8f);
-        }
-        else
-        {
-            g.setColour (juce::Colours::black.withAlpha (0.5f));
-            g.fillRoundedRectangle (area.expanded (1.0f), 5.5f);
         }
         drawPianoKey (g, area.reduced (1.0f), 4.0f, 2.2f, down, highlighted);
         if (button.getToggleState() && ! button.getProperties().contains (iconProperty))
@@ -144,21 +138,13 @@ void ParagonLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button& 
     if (button.getProperties()[pedalButtonProperty])
     {
         // A small piano-black key, in a recessed surround on the metal: a dark
-        // well round the key, a lit lower lip, and a rim, chrome or (pearl
-        // black, white + neon) the neon, pink to red to orange across.
+        // well round the key, a lit lower lip, and a rim of the neon, pink to
+        // red to orange across.
         const auto surround = button.getLocalBounds().toFloat().reduced (0.5f);
-        if (Finish::neonRings())
-        {
-            g.setGradientFill (Finish::neonGradient (surround.getX(), surround.getRight()));
-            g.fillRoundedRectangle (surround, 5.0f);
-            g.setGradientFill (juce::ColourGradient (juce::Colours::black.withAlpha (0.3f), 0.0f, surround.getY(),
-                                                     juce::Colours::white.withAlpha (0.25f), 0.0f, surround.getBottom(), false));
-        }
-        else
-        {
-            g.setGradientFill (juce::ColourGradient (juce::Colour (0xff6e5f67), 0.0f, surround.getY(),
-                                                     juce::Colour (0xffe9dde3), 0.0f, surround.getBottom(), false));
-        }
+        g.setGradientFill (Finish::neonGradient (surround.getX(), surround.getRight()));
+        g.fillRoundedRectangle (surround, 5.0f);
+        g.setGradientFill (juce::ColourGradient (juce::Colours::black.withAlpha (0.3f), 0.0f, surround.getY(),
+                                                 juce::Colours::white.withAlpha (0.25f), 0.0f, surround.getBottom(), false));
         g.fillRoundedRectangle (surround, 5.0f);
         g.setColour (juce::Colour (0xff1a1216));
         g.fillRoundedRectangle (surround.reduced (1.5f), 4.0f);
@@ -284,10 +270,8 @@ void ParagonLookAndFeel::drawPedalKnob (juce::Graphics& g, juce::Rectangle<float
     const auto ringRx = size * 0.29f, ringRy = size * 0.26f;
     const auto ringY = baseY - size * 0.03f;         // the ring's centre, a little above the base
     const juce::Colour neon { 0xffff2e3a }, neonCore { 0xffffd6d6 };
-    // On pearl black and pearl white + neon the ring carries the neon's
-    // pink to red to orange across, like the keys' rings; on pearl white
-    // it's the plain neon red.
-    const auto gradientRing = Finish::neonRings();
+    // The ring carries the neon's pink to red to orange across, like the
+    // keys' rings.
 
     // 1. Light pooling on the metal round the ring (kept tight, so it reads
     //    as a glow rather than a wash of pink), and the knob's contact shadow.
@@ -312,11 +296,6 @@ void ParagonLookAndFeel::drawPedalKnob (juce::Graphics& g, juce::Rectangle<float
     };
     const auto ringFill = [&] (float alpha)
     {
-        if (! gradientRing)
-        {
-            g.setColour (neon.withAlpha (alpha));
-            return;
-        }
         // The keys' gradient, brightened: the ring is a light, the rims are metal.
         auto gradient = Finish::neonGradient (cx - ringRx, cx + ringRx);
         for (int i = 0; i < gradient.getNumColours(); ++i)

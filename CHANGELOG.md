@@ -2,6 +2,19 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.5.0
+
+**Two finishes, OBSIDIAN and AURORA**, as on every PR7 now (your decision for the whole family, from PR7-G 0.60.0 and PR7-B). The sound is unchanged from 0.4.7.
+
+- **OBSIDIAN** is the pearl black unit (Pearl Black renamed), and it's now **the default**.
+- **AURORA** is the pearl white unit with neon rings (Pearl White + Neon renamed).
+- Both have black keys and knobs in neon pink-to-orange rings.
+- **Pearl White, with dark key edges and plain orange knob rings, is gone.** If you were on it, or never picked a finish, PR7-C now opens in Obsidian (Pearl White used to be the default). If you picked Pearl Black, it's Obsidian; if you picked Pearl White + Neon, it's Aurora.
+- The settings gear's FINISH list has just the two: OBSIDIAN and AURORA.
+- **AURORA is 10% less bright than the old pearl white** (as on PR7-B, where full white was too much to look at for long). Every module's pearl plate, its shine and highlights included, is drawn at 90% of its old brightness: pure white becomes 230 out of 255, still clearly a white unit, without the glare.
+  - The lettering, the neon rings, the keys, the knobs, the fader, the lamps, the meters and the screens keep their own colours, so they stand out a little more.
+  - OBSIDIAN looks exactly as Pearl Black did, pixel for pixel.
+
 ## 0.4.7
 
 **A new look for Pearl Black and Pearl White + Neon: black keys and knobs in neon rings** (your design, from PR7-G 0.59.0). The sound is unchanged from 0.4.6.
